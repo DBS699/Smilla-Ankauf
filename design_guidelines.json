@@ -1,0 +1,111 @@
+{
+  "identity": {
+    "name": "ReWear POS",
+    "persona": "E1: The Anti-AI Designer",
+    "vibe": "Tactile Utility",
+    "description": "A high-efficiency, touch-first POS system for second-hand clothing. Esthetics borrow from 'Swiss Receipt Design' and 'Modern Inventory'—clean, high-contrast, and physically satisfying to use."
+  },
+  "typography": {
+    "primary": {
+      "name": "Manrope",
+      "usage": "UI elements, labels, body text",
+      "weights": ["400", "500", "600", "700"],
+      "import": "@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap');"
+    },
+    "secondary": {
+      "name": "Oswald",
+      "usage": "Prices, Totals, Receipt Headers, Numeric Data",
+      "weights": ["400", "500", "700"],
+      "import": "@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;700&display=swap');"
+    },
+    "rules": [
+      "Use Oswald for ALL currency and numeric values (prices, totals, dates).",
+      "Use Manrope for all text labels and buttons.",
+      "Headings (h1, h2) should be Manrope Bold or ExtraBold.",
+      "Receipt text should be Oswald to mimic a physical receipt."
+    ]
+  },
+  "colors": {
+    "palette": {
+      "background": "#F9F9F7",
+      "foreground": "#2F4858",
+      "card": "#FFFFFF",
+      "card_foreground": "#2F4858",
+      "primary": "#2F4858",
+      "primary_foreground": "#FFFFFF",
+      "secondary": "#E2E8F0",
+      "secondary_foreground": "#1E293B",
+      "muted": "#F1F5F9",
+      "muted_foreground": "#64748B",
+      "accent": "#F1F5F9",
+      "accent_foreground": "#2F4858",
+      "destructive": "#EF4444",
+      "destructive_foreground": "#FFFFFF",
+      "border": "#E2E8F0",
+      "input": "#FFFFFF",
+      "ring": "#2F4858"
+    },
+    "usage": {
+      "background": "The main app background is 'Warm Paper' (#F9F9F7).",
+      "sidebar": "The Cart/Receipt sidebar should be Pure White (#FFFFFF) with a subtle drop shadow.",
+      "active_state": "Use #2F4858 (Ink Blue) for active states.",
+      "price_tag": "Price tags can use a 'Tag Yellow' accent (#FEF08A) with Ink Blue text for high contrast."
+    }
+  },
+  "layout": {
+    "structure": "Two-column layout: Main Grid (Left, 66-75%) + Receipt Sidebar (Right, 25-33%).",
+    "spacing": {
+      "container_padding": "p-6 md:p-8 lg:p-12",
+      "grid_gap": "gap-4 md:gap-6",
+      "internal_padding": "p-6"
+    },
+    "grid_strategy": "Bento Grid for Categories. Not all cards need to be equal. 'Kleider' and 'Jacken' can be 2x2, others 1x1.",
+    "sidebar_behavior": "Sticky on Desktop/Tablet. Drawer/Sheet on Mobile."
+  },
+  "components": {
+    "buttons": {
+      "style": "Sharp corners or slightly rounded (rounded-md). High height (h-12 or h-14) for touch targets.",
+      "interaction": "Scale down slightly on click (active:scale-95)."
+    },
+    "cards": {
+      "style": "Flat, 1px border (border-border), no shadow by default. Hover: shadow-md + border-primary.",
+      "content": "Large Icon (Lucide) + Label. Centered or Bottom-Left aligned."
+    },
+    "inputs": {
+      "style": "Massive text for Price Entry. No borders, just a big underline or a 'ghost' input field."
+    },
+    "modals": {
+      "style": "Use 'Dialog' for the Quick Add flow. It should feel like a 'Command Center'.",
+      "backdrop": "backdrop-blur-sm bg-black/20"
+    }
+  },
+  "visual_enhancers": {
+    "icons": "Lucide React. Use stroke-width={1.5} for a refined look.",
+    "textures": "Add a subtle 'noise' texture to the #F9F9F7 background to make it feel like paper.",
+    "shadows": "Use 'shadow-sm' for cards, 'shadow-xl' for the floating receipt sidebar."
+  },
+  "image_urls": {
+    "store_bg": "https://images.pexels.com/photos/8939795/pexels-photo-8939795.jpeg",
+    "categories": {
+      "note": "Use Lucide Icons for categories instead of images for cleaner POS UI. If images are strictly required, use the store_bg as a subtle texture."
+    }
+  },
+  "instructions_to_main_agent": [
+    "1. SETUP: Install 'lucide-react', 'clsx', 'tailwind-merge' if not present.",
+    "2. FONTS: Add Manrope and Oswald to index.css via @import.",
+    "3. LAYOUT: Create a 'MainLayout' component that handles the Split View (Grid + Sidebar).",
+    "4. STATE: Use a simple local state or Context for the 'Cart' (Warenkorb). No complex Redux needed.",
+    "5. PRINTING: Use a simple 'window.print()' style sheet that hides the UI and only shows the Receipt component.",
+    "6. DATA: Hardcode the Categories, Price Levels, and Conditions from the prompt into a 'constants.js' file.",
+    "7. FLOW: Clicking a Category -> Opens Dialog -> Select Price Level -> Select Condition -> Enter Price -> Add to Cart.",
+    "8. HISTORY: Create a separate view/route for 'Ankaufshistorie' with a simple table."
+  ],
+  "universal_guidelines": [
+    "Do not use generic centered layouts. Use the Bento Grid.",
+    "Use 2-3x more spacing than typical designs.",
+    "No gradients. Use solid colors and borders.",
+    "Every interaction needs micro-animations (hover, click).",
+    "Use 'sonner' for toast notifications (e.g., 'Item added').",
+    "Ensure touch targets are at least 44px (preferably 64px for this POS)."
+  ]
+}
