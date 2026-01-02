@@ -122,9 +122,12 @@ export default function MainPage() {
       toast.success('Ankauf gespeichert!');
       setCart([]);
       loadTodayStats();
+      setIsMobileCartOpen(false);
       
-      // Open receipt in new tab
-      window.open(`/receipt/${purchase.id}`, '_blank');
+      // Open receipt in new tab with slight delay to ensure purchase is saved
+      setTimeout(() => {
+        window.open(`/receipt/${purchase.id}`, '_blank');
+      }, 100);
     } catch (error) {
       toast.error('Fehler beim Speichern');
       console.error(error);
