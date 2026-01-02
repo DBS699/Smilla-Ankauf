@@ -1,34 +1,108 @@
-.App-logo {
-    height: 40vmin;
-    pointer-events: none;
+/* App specific styles */
+
+/* Category card hover effects */
+.category-card {
+    transition: all 0.15s ease;
+    border: 1px solid hsl(214, 32%, 91%);
 }
 
-@media (prefers-reduced-motion: no-preference) {
-    .App-logo {
-        animation: App-logo-spin infinite 20s linear;
+.category-card:hover {
+    border-color: hsl(200, 30%, 26%);
+    box-shadow: 0 4px 12px rgba(47, 72, 88, 0.1);
+}
+
+.category-card:active {
+    transform: scale(0.98);
+}
+
+/* Sidebar shadow */
+.sidebar-shadow {
+    box-shadow: -4px 0 24px rgba(0, 0, 0, 0.08);
+}
+
+/* Cart item animation */
+.cart-item {
+    animation: slideIn 0.2s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
     }
 }
 
-.App-header {
-    background-color: #0f0f10;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    font-size: calc(10px + 2vmin);
+/* Level buttons */
+.level-btn {
+    transition: all 0.15s ease;
+}
+
+.level-btn:hover {
+    transform: translateY(-2px);
+}
+
+.level-btn.selected {
+    background-color: hsl(200, 30%, 26%);
     color: white;
 }
 
-.App-link {
-    color: #61dafb;
+/* Condition badges */
+.condition-badge {
+    transition: all 0.15s ease;
+    cursor: pointer;
 }
 
-@keyframes App-logo-spin {
-    from {
-        transform: rotate(0deg);
-    }
-    to {
-        transform: rotate(360deg);
-    }
+.condition-badge:hover {
+    opacity: 0.8;
+}
+
+.condition-badge.selected {
+    ring: 2px;
+    ring-color: hsl(200, 30%, 26%);
+}
+
+/* Price input */
+.price-input {
+    font-family: 'Oswald', sans-serif;
+    font-size: 3rem;
+    text-align: center;
+    border: none;
+    border-bottom: 3px solid hsl(200, 30%, 26%);
+    background: transparent;
+    outline: none;
+    width: 100%;
+    padding: 0.5rem;
+}
+
+.price-input:focus {
+    border-bottom-color: hsl(43, 74%, 66%);
+}
+
+/* Stats cards */
+.stats-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    border: 1px solid hsl(214, 32%, 91%);
+}
+
+/* Table styling for history */
+.history-table th {
+    font-weight: 600;
+    text-align: left;
+    padding: 1rem;
+    border-bottom: 2px solid hsl(214, 32%, 91%);
+}
+
+.history-table td {
+    padding: 1rem;
+    border-bottom: 1px solid hsl(214, 32%, 91%);
+}
+
+.history-table tr:hover {
+    background-color: hsl(210, 40%, 98%);
 }

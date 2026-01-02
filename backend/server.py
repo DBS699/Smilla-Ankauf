@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter
+from fastapi import FastAPI, APIRouter, HTTPException
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -6,10 +6,9 @@ import os
 import logging
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict
-from typing import List
+from typing import List, Optional
 import uuid
-from datetime import datetime, timezone
-
+from datetime import datetime, timezone, timedelta
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -25,46 +24,209 @@ app = FastAPI()
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
 
+# ============== Models ==============
 
-# Define Models
-class StatusCheck(BaseModel):
-    model_config = ConfigDict(extra="ignore")  # Ignore MongoDB's _id field
-    
+class PurchaseItem(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    client_name: str
+    category: str
+    price_level: str  # Luxus, Teuer, Mittel, Günstig
+    condition: str    # Neu, Kaum benutzt, Gebraucht/Gut, Abgenutzt
+    price: float
+
+class PurchaseItemCreate(BaseModel):
+    category: str
+    price_level: str
+    condition: str
+    price: float
+
+class Purchase(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    items: List[PurchaseItem]
+    total: float
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
-class StatusCheckCreate(BaseModel):
-    client_name: str
+class PurchaseCreate(BaseModel):
+    items: List[PurchaseItemCreate]
 
-# Add your routes to the router instead of directly to app
+class PurchaseResponse(BaseModel):
+    id: str
+    items: List[PurchaseItem]
+    total: float
+    timestamp: str
+
+class DailyStats(BaseModel):
+    date: str
+    count: int
+    total: float
+
+class MonthlyStats(BaseModel):
+    month: str
+    count: int
+    total: float
+
+# ============== Routes ==============
+
 @api_router.get("/")
 async def root():
-    return {"message": "Hello World"}
+    return {"message": "ReWear POS API"}
 
-@api_router.post("/status", response_model=StatusCheck)
-async def create_status_check(input: StatusCheckCreate):
-    status_dict = input.model_dump()
-    status_obj = StatusCheck(**status_dict)
-    
-    # Convert to dict and serialize datetime to ISO string for MongoDB
-    doc = status_obj.model_dump()
-    doc['timestamp'] = doc['timestamp'].isoformat()
-    
-    _ = await db.status_checks.insert_one(doc)
-    return status_obj
+# Get all categories
+@api_router.get("/categories")
+async def get_categories():
+    return {
+        "categories": [
+            "Kleider", "Strickmode/Cardigans", "Sweatshirt", "Hoodie",
+            "Hosen", "Jeans", "Jacken", "Blazer", "Mäntel",
+            "Shirts", "Top", "Hemd", "Bluse", "Röcke/Jupe",
+            "Sportbekleidung", "Bademode", "Shorts"
+        ],
+        "price_levels": ["Luxus", "Teuer", "Mittel", "Günstig"],
+        "conditions": ["Neu", "Kaum benutzt", "Gebraucht/Gut", "Abgenutzt"]
+    }
 
-@api_router.get("/status", response_model=List[StatusCheck])
-async def get_status_checks():
-    # Exclude MongoDB's _id field from the query results
-    status_checks = await db.status_checks.find({}, {"_id": 0}).to_list(1000)
+# Create a new purchase (Ankauf)
+@api_router.post("/purchases", response_model=PurchaseResponse)
+async def create_purchase(purchase_data: PurchaseCreate):
+    # Calculate total
+    total = sum(item.price for item in purchase_data.items)
     
-    # Convert ISO string timestamps back to datetime objects
-    for check in status_checks:
-        if isinstance(check['timestamp'], str):
-            check['timestamp'] = datetime.fromisoformat(check['timestamp'])
+    # Create purchase items with IDs
+    items = [
+        PurchaseItem(
+            category=item.category,
+            price_level=item.price_level,
+            condition=item.condition,
+            price=item.price
+        )
+        for item in purchase_data.items
+    ]
     
-    return status_checks
+    # Create purchase object
+    purchase = Purchase(items=items, total=total)
+    
+    # Prepare document for MongoDB
+    doc = {
+        "id": purchase.id,
+        "items": [item.model_dump() for item in items],
+        "total": total,
+        "timestamp": purchase.timestamp.isoformat()
+    }
+    
+    await db.purchases.insert_one(doc)
+    
+    return PurchaseResponse(
+        id=purchase.id,
+        items=items,
+        total=total,
+        timestamp=purchase.timestamp.isoformat()
+    )
+
+# Get all purchases
+@api_router.get("/purchases", response_model=List[PurchaseResponse])
+async def get_purchases(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None
+):
+    query = {}
+    
+    if start_date or end_date:
+        query["timestamp"] = {}
+        if start_date:
+            query["timestamp"]["$gte"] = start_date
+        if end_date:
+            query["timestamp"]["$lte"] = end_date
+    
+    purchases = await db.purchases.find(query, {"_id": 0}).sort("timestamp", -1).to_list(1000)
+    return purchases
+
+# Get single purchase by ID
+@api_router.get("/purchases/{purchase_id}", response_model=PurchaseResponse)
+async def get_purchase(purchase_id: str):
+    purchase = await db.purchases.find_one({"id": purchase_id}, {"_id": 0})
+    if not purchase:
+        raise HTTPException(status_code=404, detail="Purchase not found")
+    return purchase
+
+# Delete a purchase
+@api_router.delete("/purchases/{purchase_id}")
+async def delete_purchase(purchase_id: str):
+    result = await db.purchases.delete_one({"id": purchase_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Purchase not found")
+    return {"message": "Purchase deleted"}
+
+# Get daily statistics
+@api_router.get("/stats/daily", response_model=List[DailyStats])
+async def get_daily_stats(days: int = 30):
+    # Get purchases from last N days
+    start_date = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+    
+    purchases = await db.purchases.find(
+        {"timestamp": {"$gte": start_date}},
+        {"_id": 0}
+    ).to_list(10000)
+    
+    # Group by date
+    daily_data = {}
+    for p in purchases:
+        date_str = p["timestamp"][:10]  # YYYY-MM-DD
+        if date_str not in daily_data:
+            daily_data[date_str] = {"count": 0, "total": 0.0}
+        daily_data[date_str]["count"] += 1
+        daily_data[date_str]["total"] += p["total"]
+    
+    # Convert to list
+    result = [
+        DailyStats(date=date, count=data["count"], total=data["total"])
+        for date, data in sorted(daily_data.items(), reverse=True)
+    ]
+    
+    return result
+
+# Get monthly statistics
+@api_router.get("/stats/monthly", response_model=List[MonthlyStats])
+async def get_monthly_stats(months: int = 12):
+    # Get all purchases
+    purchases = await db.purchases.find({}, {"_id": 0}).to_list(100000)
+    
+    # Group by month
+    monthly_data = {}
+    for p in purchases:
+        month_str = p["timestamp"][:7]  # YYYY-MM
+        if month_str not in monthly_data:
+            monthly_data[month_str] = {"count": 0, "total": 0.0}
+        monthly_data[month_str]["count"] += 1
+        monthly_data[month_str]["total"] += p["total"]
+    
+    # Convert to list and limit
+    result = [
+        MonthlyStats(month=month, count=data["count"], total=data["total"])
+        for month, data in sorted(monthly_data.items(), reverse=True)
+    ][:months]
+    
+    return result
+
+# Get today's summary
+@api_router.get("/stats/today")
+async def get_today_stats():
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    
+    purchases = await db.purchases.find(
+        {"timestamp": {"$regex": f"^{today}"}},
+        {"_id": 0}
+    ).to_list(10000)
+    
+    total_purchases = len(purchases)
+    total_amount = sum(p["total"] for p in purchases)
+    total_items = sum(len(p["items"]) for p in purchases)
+    
+    return {
+        "date": today,
+        "total_purchases": total_purchases,
+        "total_amount": total_amount,
+        "total_items": total_items
+    }
 
 # Include the router in the main app
 app.include_router(api_router)
