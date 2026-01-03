@@ -245,6 +245,153 @@ class ReWearPOSAPITester:
             return True
         return False
 
+    def test_custom_categories(self):
+        """Test custom categories functionality"""
+        # Test getting custom categories
+        success, response = self.run_test(
+            "Get Custom Categories",
+            "GET",
+            "api/custom-categories",
+            200
+        )
+        
+        if not success:
+            return False
+            
+        initial_count = len(response) if isinstance(response, list) else 0
+        print(f"   📋 Initial custom categories: {initial_count}")
+        
+        # Test adding a custom category
+        test_category = f"Test_Category_{datetime.now().strftime('%H%M%S')}"
+        success, response = self.run_test(
+            "Add Custom Category",
+            "POST",
+            "api/custom-categories",
+            200,
+            data={"name": test_category}
+        )
+        
+        if not success:
+            return False
+            
+        # Verify category was added
+        success, response = self.run_test(
+            "Get Custom Categories After Add",
+            "GET",
+            "api/custom-categories",
+            200
+        )
+        
+        if success and isinstance(response, list):
+            if test_category in response:
+                print(f"   ✅ Custom category '{test_category}' added successfully")
+                
+                # Test deleting the custom category
+                success, response = self.run_test(
+                    "Delete Custom Category",
+                    "DELETE",
+                    f"api/custom-categories/{test_category}",
+                    200
+                )
+                
+                if success:
+                    print(f"   ✅ Custom category '{test_category}' deleted successfully")
+                    return True
+                else:
+                    print(f"   ❌ Failed to delete custom category")
+                    return False
+            else:
+                print(f"   ❌ Custom category '{test_category}' not found after adding")
+                return False
+        return False
+
+    def test_settings(self):
+        """Test settings functionality"""
+        # Test getting settings
+        success, response = self.run_test(
+            "Get Settings",
+            "GET",
+            "api/settings",
+            200
+        )
+        
+        if not success:
+            return False
+            
+        # Verify settings structure
+        if 'colors' in response:
+            colors = response['colors']
+            required_colors = ['luxus', 'teuer', 'mittel', 'guenstig']
+            if all(color in colors for color in required_colors):
+                print(f"   ✅ Settings structure correct with all color keys")
+                print(f"   🎨 Colors: {colors}")
+                
+                # Test updating settings
+                test_settings = {
+                    "danger_zone_password": "test123",
+                    "colors": {
+                        "luxus": "#FF0000",
+                        "teuer": "#00FF00", 
+                        "mittel": "#0000FF",
+                        "guenstig": "#FFFF00"
+                    }
+                }
+                
+                success, response = self.run_test(
+                    "Update Settings",
+                    "PUT",
+                    "api/settings",
+                    200,
+                    data=test_settings
+                )
+                
+                if success:
+                    print(f"   ✅ Settings updated successfully")
+                    
+                    # Verify settings were updated
+                    success, response = self.run_test(
+                        "Get Updated Settings",
+                        "GET",
+                        "api/settings",
+                        200
+                    )
+                    
+                    if success and response.get('danger_zone_password') == 'test123':
+                        print(f"   ✅ Settings verification successful")
+                        
+                        # Reset settings to default
+                        default_settings = {
+                            "danger_zone_password": "",
+                            "colors": {
+                                "luxus": "#FEF3C7",
+                                "teuer": "#DBEAFE",
+                                "mittel": "#D1FAE5",
+                                "guenstig": "#F1F5F9"
+                            }
+                        }
+                        
+                        self.run_test(
+                            "Reset Settings",
+                            "PUT",
+                            "api/settings",
+                            200,
+                            data=default_settings
+                        )
+                        
+                        return True
+                    else:
+                        print(f"   ❌ Settings verification failed")
+                        return False
+                else:
+                    print(f"   ❌ Failed to update settings")
+                    return False
+            else:
+                print(f"   ❌ Settings missing required color keys")
+                return False
+        else:
+            print(f"   ❌ Settings response missing 'colors' field")
+            return False
+
 def main():
     print("🧪 Starting ReWear POS API Tests")
     print("=" * 50)
