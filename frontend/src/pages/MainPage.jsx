@@ -423,27 +423,16 @@ export default function MainPage() {
               </div>
             </div>
 
-            {/* Background Picker */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon" className="hidden sm:flex" data-testid="bg-picker-btn">
-                  <Palette className="w-4 h-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {BACKGROUNDS.map((bg) => (
-                  <DropdownMenuItem 
-                    key={bg.id}
-                    onClick={() => handleChangeBackground(bg.id)}
-                    className={background === bg.id ? 'bg-accent' : ''}
-                  >
-                    <div className={`w-4 h-4 rounded mr-2 border ${bg.class}`} />
-                    {bg.name}
-                    {background === bg.id && <Check className="w-4 h-4 ml-auto" />}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {/* Dark/Light Mode Toggle */}
+            <Button 
+              variant="outline" 
+              size="icon" 
+              className="hidden sm:flex"
+              onClick={toggleDarkMode}
+              data-testid="dark-mode-btn"
+            >
+              {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </Button>
 
             <Link to="/settings">
               <Button variant="outline" size="sm" data-testid="settings-link" className="px-2 sm:px-3">
