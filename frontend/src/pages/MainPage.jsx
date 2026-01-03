@@ -82,6 +82,7 @@ export default function MainPage() {
   const loadCustomCategories = async () => {
     try {
       const cats = await api.getCustomCategories();
+      // cats is now array of {name, image} objects
       setCustomCategories(cats);
     } catch (error) {
       console.error('Failed to load custom categories:', error);
@@ -105,10 +106,11 @@ export default function MainPage() {
   // Combine default and custom categories
   const allCategories = [
     ...CATEGORIES,
-    ...customCategories.map(name => ({ 
-      id: name.toLowerCase().replace(/\s+/g, '_'), 
-      name, 
-      icon: categoryIcons[name] || 'Shirt' 
+    ...customCategories.map(cat => ({ 
+      id: cat.name.toLowerCase().replace(/\s+/g, '_'), 
+      name: cat.name, 
+      icon: categoryIcons[cat.name] || 'Shirt',
+      image: cat.image || null
     }))
   ];
 
@@ -463,7 +465,15 @@ export default function MainPage() {
                     onClick={() => openCategoryDialog(category)}
                     data-testid={`category-${category.id}`}
                   >
-                    <Icon className="w-8 h-8 mb-2 text-primary" strokeWidth={1.5} />
+                    {category.image ? (
+                      <img 
+                        src={category.image} 
+                        alt={category.name} 
+                        className="w-12 h-12 mb-2 rounded-lg object-cover"
+                      />
+                    ) : (
+                      <Icon className="w-8 h-8 mb-2 text-primary" strokeWidth={1.5} />
+                    )}
                     <span className="text-sm font-medium text-center">{category.name}</span>
                   </Card>
                 );
