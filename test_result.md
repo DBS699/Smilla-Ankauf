@@ -126,15 +126,18 @@ backend:
 
   - task: "Export purchases with date filter"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Added optional start_date and end_date params to /api/purchases/export/excel"
+      - working: true
+        agent: "testing"
+        comment: "✅ TESTED: Export API working correctly. All scenarios tested: export all (no filter), export with start_date only, export with end_date only, export with both dates. All return 200 status and proper Excel files. Backend logs show no errors."
 
 frontend:
   - task: "Receipt Editor with live preview"
