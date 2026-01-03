@@ -310,8 +310,18 @@ async def delete_purchase(purchase_id: str):
 
 # Export all purchases as Excel
 @api_router.get("/purchases/export/excel")
-async def export_purchases_excel():
-    purchases = await db.purchases.find({}, {"_id": 0}).sort("timestamp", -1).to_list(100000)
+async def export_purchases_excel(start_date: Optional[str] = None, end_date: Optional[str] = None):
+    query = {}
+    
+    if start_date or end_date:
+        query["timestamp"] = {}
+        if start_date:
+            query["timestamp"]["$gte"] = start_date
+        if end_date:
+            # Add time to include the entire end day
+            query["timestamp"]["$lte"] = end_date + "T23:59:59"
+    
+    purchases = await db.purchases.find(query, {"_id": 0}).sort("timestamp", -1).to_list(100000)
     
     # Flatten purchases into rows (one row per item)
     rows = []

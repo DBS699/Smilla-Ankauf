@@ -138,15 +138,28 @@ export const api = {
     return response.data;
   },
 
-  // Export purchases
-  exportPurchasesExcel: async () => {
+  // Export purchases with optional date filter
+  exportPurchasesExcel: async (startDate = null, endDate = null) => {
+    const params = {};
+    if (startDate) params.start_date = startDate;
+    if (endDate) params.end_date = endDate;
+    
     const response = await axios.get(`${API}/purchases/export/excel`, {
-      responseType: 'blob'
+      responseType: 'blob',
+      params
     });
     const url = window.URL.createObjectURL(new Blob([response.data]));
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', 'ankaufe_export.xlsx');
+    
+    // Include date range in filename if filtered
+    let filename = 'ankaufe_export';
+    if (startDate || endDate) {
+      filename += `_${startDate || 'start'}_bis_${endDate || 'ende'}`;
+    }
+    filename += '.xlsx';
+    
+    link.setAttribute('download', filename);
     document.body.appendChild(link);
     link.click();
     link.remove();
