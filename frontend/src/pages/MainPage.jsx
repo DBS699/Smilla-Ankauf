@@ -680,68 +680,73 @@ export default function MainPage() {
                       )}
                       
                       {/* Price Display */}
-                      <div className="font-display text-5xl font-bold mb-6" data-testid="price-display">
+                      <div className="font-display text-5xl font-bold mb-4" data-testid="price-display">
                         CHF {(parseFloat(price) || 0).toFixed(2)}
                       </div>
                       
-                      {/* Price Slider */}
-                      <div className="px-4 mb-6">
-                        <Slider
-                          value={[parseFloat(price) || 0]}
-                          onValueChange={(val) => setPrice(val[0].toString())}
-                          min={0}
-                          max={100}
-                          step={0.5}
-                          className="w-full"
-                          data-testid="price-slider"
-                        />
-                        <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                          <span>0</span>
-                          <span>25</span>
-                          <span>50</span>
-                          <span>75</span>
-                          <span>100</span>
+                      {/* Vertical Price Slider with +/- buttons */}
+                      <div className="flex items-center justify-center gap-6 mb-4">
+                        {/* Minus buttons */}
+                        <div className="flex flex-col gap-2">
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-12 w-12 rounded-full"
+                            onClick={() => setPrice(Math.max(0, (parseFloat(price) || 0) - 5).toString())}
+                            data-testid="price-minus-5"
+                          >
+                            -5
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-14 w-14 rounded-full"
+                            onClick={() => setPrice(Math.max(0, (parseFloat(price) || 0) - 1).toString())}
+                            data-testid="price-minus-1"
+                          >
+                            <Minus className="w-6 h-6" />
+                          </Button>
                         </div>
-                      </div>
-                      
-                      {/* Fine adjustment buttons */}
-                      <div className="flex items-center justify-center gap-4 mb-4">
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-14 w-14 rounded-full"
-                          onClick={() => setPrice(Math.max(0, (parseFloat(price) || 0) - 1).toString())}
-                          data-testid="price-minus-1"
-                        >
-                          <Minus className="w-6 h-6" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-10"
-                          onClick={() => setPrice(Math.max(0, (parseFloat(price) || 0) - 0.5).toString())}
-                          data-testid="price-minus-half"
-                        >
-                          -0.50
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-10"
-                          onClick={() => setPrice(((parseFloat(price) || 0) + 0.5).toString())}
-                          data-testid="price-plus-half"
-                        >
-                          +0.50
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-14 w-14 rounded-full"
-                          onClick={() => setPrice(((parseFloat(price) || 0) + 1).toString())}
-                          data-testid="price-plus-1"
-                        >
-                          <Plus className="w-6 h-6" />
-                        </Button>
+                        
+                        {/* Vertical Slider */}
+                        <div className="flex flex-col items-center h-48">
+                          <span className="text-xs text-muted-foreground mb-2">100</span>
+                          <div className="relative h-full w-12 flex items-center justify-center">
+                            <Slider
+                              value={[parseFloat(price) || 0]}
+                              onValueChange={(val) => setPrice(val[0].toString())}
+                              min={0}
+                              max={100}
+                              step={0.5}
+                              orientation="vertical"
+                              className="h-full"
+                              data-testid="price-slider"
+                            />
+                          </div>
+                          <span className="text-xs text-muted-foreground mt-2">0</span>
+                        </div>
+                        
+                        {/* Plus buttons */}
+                        <div className="flex flex-col gap-2">
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-12 w-12 rounded-full"
+                            onClick={() => setPrice(((parseFloat(price) || 0) + 5).toString())}
+                            data-testid="price-plus-5"
+                          >
+                            +5
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-14 w-14 rounded-full"
+                            onClick={() => setPrice(((parseFloat(price) || 0) + 1).toString())}
+                            data-testid="price-plus-1"
+                          >
+                            <Plus className="w-6 h-6" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
 
