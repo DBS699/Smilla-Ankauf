@@ -391,13 +391,13 @@ export default function MainPage() {
     <div className="min-h-screen" data-testid="main-page">
       {/* Header */}
       <header className="bg-white border-b sticky top-0 z-40 no-print">
-        <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold text-primary">ReWear POS</h1>
-            <p className="text-sm text-muted-foreground">Ankaufs-System</p>
+        <div className="container mx-auto px-3 sm:px-4 py-2 sm:py-3 flex items-center justify-between">
+          <div className="min-w-0">
+            <h1 className="text-lg sm:text-xl font-bold text-primary truncate">ReWear POS</h1>
+            <p className="text-xs sm:text-sm text-muted-foreground hidden xs:block">Ankaufs-System</p>
           </div>
           
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             <div className="hidden md:flex items-center gap-6 text-sm">
               <div className="text-center">
                 <p className="text-muted-foreground">Heute</p>
@@ -436,25 +436,25 @@ export default function MainPage() {
             </DropdownMenu>
 
             <Link to="/settings">
-              <Button variant="outline" size="sm" data-testid="settings-link">
-                <Settings className="w-4 h-4 mr-2" />
-                Einstellungen
+              <Button variant="outline" size="sm" data-testid="settings-link" className="px-2 sm:px-3">
+                <Settings className="w-4 h-4 sm:mr-2" />
+                <span className="hidden sm:inline">Einstellungen</span>
               </Button>
             </Link>
 
             <Link to="/history">
-              <Button variant="outline" size="sm" data-testid="history-link">
-                <History className="w-4 h-4 mr-2" />
-                Historie
+              <Button variant="outline" size="sm" data-testid="history-link" className="px-2 sm:px-3">
+                <History className="w-4 h-4 sm:mr-2" />
+                <span className="hidden sm:inline">Historie</span>
               </Button>
             </Link>
 
             {/* User Menu */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" data-testid="user-menu-btn">
-                  <User className="w-4 h-4 mr-2" />
-                  {user?.username}
+                <Button variant="outline" size="sm" data-testid="user-menu-btn" className="px-2 sm:px-3">
+                  <User className="w-4 h-4 sm:mr-2" />
+                  <span className="hidden sm:inline">{user?.username}</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
@@ -492,17 +492,17 @@ export default function MainPage() {
       </header>
 
       {/* Main content */}
-      <div className="container mx-auto px-4 py-6 lg:py-8">
-        <div className="flex gap-8">
-          <main className="flex-1">
-            <h2 className="text-lg font-semibold mb-4 text-muted-foreground">Kategorie wählen</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+      <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 lg:py-8">
+        <div className="flex gap-4 lg:gap-8">
+          <main className="flex-1 min-w-0">
+            <h2 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-muted-foreground">Kategorie wählen</h2>
+            <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-3 lg:gap-4">
               {allCategories.map((category) => {
                 const Icon = getIcon(category.icon);
                 return (
                   <Card
                     key={category.id}
-                    className="category-card p-4 cursor-pointer flex flex-col items-center justify-center min-h-[120px] hover:bg-accent/50"
+                    className="category-card p-2 sm:p-4 cursor-pointer flex flex-col items-center justify-center min-h-[90px] sm:min-h-[120px] hover:bg-accent/50"
                     onClick={() => openCategoryDialog(category)}
                     data-testid={`category-${category.id}`}
                   >
@@ -510,12 +510,12 @@ export default function MainPage() {
                       <img 
                         src={category.image} 
                         alt={category.name} 
-                        className="w-12 h-12 mb-2 rounded-lg object-cover"
+                        className="w-8 h-8 sm:w-12 sm:h-12 mb-1 sm:mb-2 rounded-lg object-cover"
                       />
                     ) : (
-                      <Icon className="w-8 h-8 mb-2 text-primary" strokeWidth={1.5} />
+                      <Icon className="w-6 h-6 sm:w-8 sm:h-8 mb-1 sm:mb-2 text-primary" strokeWidth={1.5} />
                     )}
-                    <span className="text-sm font-medium text-center">{category.name}</span>
+                    <span className="text-xs sm:text-sm font-medium text-center leading-tight">{category.name}</span>
                   </Card>
                 );
               })}
