@@ -52,7 +52,7 @@ class PurchaseItem(BaseModel):
     category: str
     price_level: str
     condition: str
-    relevance: str
+    relevance: str = "Wichtig"  # Default value for backward compatibility
     price: float
 
 class PurchaseItemCreate(BaseModel):
