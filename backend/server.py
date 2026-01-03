@@ -508,7 +508,8 @@ async def get_settings():
                 "guenstig": "#F1F5F9"
             },
             "hidden_categories": [],
-            "category_icons": {}
+            "category_icons": {},
+            "background": "paper"
         }
     return settings
 
@@ -520,6 +521,44 @@ async def update_settings(data: dict):
         upsert=True
     )
     return {"message": "Einstellungen gespeichert"}
+
+# Receipt settings
+@api_router.get("/settings/receipt")
+async def get_receipt_settings():
+    settings = await db.app_settings.find_one({"type": "receipt"}, {"_id": 0})
+    if not settings:
+        return {
+            "store_name": "Smillå-Store GmbH",
+            "store_address": "Musterstrasse 123",
+            "store_city": "8000 Zürich",
+            "store_phone": "+41 44 123 45 67",
+            "footer_text": "Vielen Dank für Ihren Verkauf!",
+            "sub_footer_text": "Diese Quittung dient als Nachweis.",
+            "show_store_name": True,
+            "show_address": True,
+            "show_phone": True,
+            "show_date": True,
+            "show_receipt_id": True,
+            "show_item_details": True,
+            "show_relevance": True,
+            "show_item_count": True,
+            "show_footer": True,
+            "font_size_store": 18,
+            "font_size_title": 16,
+            "font_size_items": 12,
+            "font_size_total": 20,
+            "font_size_footer": 12
+        }
+    return settings
+
+@api_router.put("/settings/receipt")
+async def update_receipt_settings(data: dict):
+    await db.app_settings.update_one(
+        {"type": "receipt"},
+        {"$set": {**data, "type": "receipt"}},
+        upsert=True
+    )
+    return {"message": "Quittungs-Einstellungen gespeichert"}
 
 # ============== App Setup ==============
 
