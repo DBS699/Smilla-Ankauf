@@ -533,6 +533,188 @@ class ReWearPOSAPITester:
             print(f"   ❌ Expected 2 users, got: {len(response) if isinstance(response, list) else 'not a list'}")
             return False
 
+    def test_export_excel_all(self):
+        """Test Excel export without date filter (all purchases)"""
+        success, response = self.run_test(
+            "Export All Purchases Excel",
+            "GET",
+            "api/purchases/export/excel",
+            200
+        )
+        
+        if success:
+            print(f"   ✅ Excel export (all) endpoint accessible")
+            return True
+        return False
+
+    def test_export_excel_with_date_filter(self):
+        """Test Excel export with date filter"""
+        # Test with date range
+        success, response = self.run_test(
+            "Export Purchases Excel with Date Filter",
+            "GET",
+            "api/purchases/export/excel",
+            200,
+            params={
+                "start_date": "2024-01-01",
+                "end_date": "2024-12-31"
+            }
+        )
+        
+        if success:
+            print(f"   ✅ Excel export with date filter endpoint accessible")
+            
+            # Test with only start date
+            success2, response2 = self.run_test(
+                "Export Excel with Start Date Only",
+                "GET",
+                "api/purchases/export/excel",
+                200,
+                params={"start_date": "2024-01-01"}
+            )
+            
+            if success2:
+                print(f"   ✅ Excel export with start date only works")
+                
+                # Test with only end date
+                success3, response3 = self.run_test(
+                    "Export Excel with End Date Only",
+                    "GET",
+                    "api/purchases/export/excel",
+                    200,
+                    params={"end_date": "2024-12-31"}
+                )
+                
+                if success3:
+                    print(f"   ✅ Excel export with end date only works")
+                    return True
+                else:
+                    print(f"   ❌ Excel export with end date only failed")
+                    return False
+            else:
+                print(f"   ❌ Excel export with start date only failed")
+                return False
+        return False
+
+    def test_receipt_settings(self):
+        """Test receipt settings API"""
+        # Test getting receipt settings
+        success, response = self.run_test(
+            "Get Receipt Settings",
+            "GET",
+            "api/settings/receipt",
+            200
+        )
+        
+        if not success:
+            return False
+            
+        # Verify receipt settings structure
+        required_fields = [
+            'store_name', 'store_address', 'store_city', 'store_phone',
+            'footer_text', 'sub_footer_text', 'show_store_name', 'show_address',
+            'show_phone', 'show_date', 'show_receipt_id', 'show_item_details',
+            'show_relevance', 'show_item_count', 'show_footer',
+            'font_size_store', 'font_size_title', 'font_size_items',
+            'font_size_total', 'font_size_footer'
+        ]
+        
+        missing_fields = [field for field in required_fields if field not in response]
+        if missing_fields:
+            print(f"   ❌ Receipt settings missing fields: {missing_fields}")
+            return False
+        
+        print(f"   ✅ Receipt settings structure correct with all {len(required_fields)} fields")
+        print(f"   🏪 Store: {response.get('store_name', 'N/A')}")
+        print(f"   📏 Font sizes: Store={response.get('font_size_store')}, Title={response.get('font_size_title')}, Items={response.get('font_size_items')}")
+        
+        # Test updating receipt settings
+        test_settings = {
+            "store_name": "Test Store Updated",
+            "store_address": "Test Address 456",
+            "store_city": "9000 Test City",
+            "store_phone": "+41 44 999 88 77",
+            "footer_text": "Test footer updated!",
+            "sub_footer_text": "Test sub footer updated.",
+            "show_store_name": True,
+            "show_address": True,
+            "show_phone": True,
+            "show_date": True,
+            "show_receipt_id": True,
+            "show_item_details": True,
+            "show_relevance": True,
+            "show_item_count": True,
+            "show_footer": True,
+            "font_size_store": 20,
+            "font_size_title": 18,
+            "font_size_items": 14,
+            "font_size_total": 22,
+            "font_size_footer": 10
+        }
+        
+        success, response = self.run_test(
+            "Update Receipt Settings",
+            "PUT",
+            "api/settings/receipt",
+            200,
+            data=test_settings
+        )
+        
+        if not success:
+            return False
+            
+        # Verify settings were updated
+        success, response = self.run_test(
+            "Get Updated Receipt Settings",
+            "GET",
+            "api/settings/receipt",
+            200
+        )
+        
+        if success:
+            if (response.get('store_name') == 'Test Store Updated' and 
+                response.get('font_size_store') == 20 and
+                response.get('footer_text') == 'Test footer updated!'):
+                print(f"   ✅ Receipt settings updated and verified successfully")
+                
+                # Reset to default settings
+                default_settings = {
+                    "store_name": "Smillå-Store GmbH",
+                    "store_address": "Musterstrasse 123",
+                    "store_city": "8000 Zürich",
+                    "store_phone": "+41 44 123 45 67",
+                    "footer_text": "Vielen Dank für Ihren Verkauf!",
+                    "sub_footer_text": "Diese Quittung dient als Nachweis.",
+                    "show_store_name": True,
+                    "show_address": True,
+                    "show_phone": True,
+                    "show_date": True,
+                    "show_receipt_id": True,
+                    "show_item_details": True,
+                    "show_relevance": True,
+                    "show_item_count": True,
+                    "show_footer": True,
+                    "font_size_store": 18,
+                    "font_size_title": 16,
+                    "font_size_items": 12,
+                    "font_size_total": 20,
+                    "font_size_footer": 12
+                }
+                
+                self.run_test(
+                    "Reset Receipt Settings",
+                    "PUT",
+                    "api/settings/receipt",
+                    200,
+                    data=default_settings
+                )
+                
+                return True
+            else:
+                print(f"   ❌ Receipt settings verification failed")
+                return False
+        return False
+
 def main():
     print("🧪 Starting ReWear POS API Tests")
     print("=" * 50)
