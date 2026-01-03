@@ -66,9 +66,53 @@ code {
 
 /* Paper texture background */
 .paper-bg {
-    background-color: hsl(45, 9%, 97%);
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
-    background-blend-mode: overlay;
+    background-color: #f8f9fa;
+}
+
+/* Light mode - clean white/light gray */
+.light-mode {
+    background-color: #f8f9fa;
+}
+
+/* Dark mode - proper dark theme */
+.dark-mode {
+    background-color: #1a1a2e;
+}
+
+.dark-mode header {
+    background-color: #16213e !important;
+    border-color: #0f3460 !important;
+}
+
+.dark-mode .bg-white {
+    background-color: #16213e !important;
+}
+
+.dark-mode .bg-muted\/50,
+.dark-mode .bg-muted {
+    background-color: #1a1a2e !important;
+}
+
+.dark-mode .text-primary {
+    color: #e8e8e8 !important;
+}
+
+.dark-mode .text-muted-foreground {
+    color: #a0a0a0 !important;
+}
+
+.dark-mode .border {
+    border-color: #0f3460 !important;
+}
+
+.dark-mode .category-card,
+.dark-mode .sidebar-shadow {
+    background-color: #16213e !important;
+    border-color: #0f3460 !important;
+}
+
+.dark-mode .category-card:hover {
+    background-color: #1a1a2e !important;
 }
 
 /* Price tag styling */
