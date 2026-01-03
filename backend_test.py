@@ -70,18 +70,20 @@ class ReWearPOSAPITester:
         return False
 
     def test_create_purchase(self):
-        """Test creating a purchase"""
+        """Test creating a purchase with relevance"""
         test_items = [
             {
                 "category": "Jeans",
                 "price_level": "Mittel",
                 "condition": "Gebraucht/Gut",
+                "relevance": "Wichtig",
                 "price": 25.50
             },
             {
                 "category": "Shirts",
                 "price_level": "Günstig",
                 "condition": "Kaum benutzt",
+                "relevance": "Stark relevant",
                 "price": 15.00
             }
         ]
@@ -102,7 +104,15 @@ class ReWearPOSAPITester:
             expected_total = sum(item['price'] for item in test_items)
             if abs(response.get('total', 0) - expected_total) < 0.01:
                 print(f"   ✅ Total calculation correct: {response['total']}")
-                return True
+                
+                # Verify items include relevance
+                items = response.get('items', [])
+                if all('relevance' in item for item in items):
+                    print(f"   ✅ All items include relevance field")
+                    return True
+                else:
+                    print(f"   ❌ Some items missing relevance field")
+                    return False
             else:
                 print(f"   ❌ Total calculation incorrect: expected {expected_total}, got {response.get('total')}")
                 return False
