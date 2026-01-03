@@ -213,6 +213,20 @@ class ReWearPOSAPITester:
             return True
         return False
 
+    def test_price_matrix_get(self):
+        """Test getting price matrix entries"""
+        success, response = self.run_test(
+            "Get Price Matrix",
+            "GET",
+            "api/price-matrix",
+            200
+        )
+        
+        if success and isinstance(response, list):
+            print(f"   ✅ Price matrix returned {len(response)} entries")
+            return True
+        return False
+
     def test_delete_purchase(self):
         """Test deleting a purchase"""
         if not self.created_purchase_id:
