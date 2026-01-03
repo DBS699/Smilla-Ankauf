@@ -732,12 +732,15 @@ def main():
         tester.test_price_matrix_get,
         tester.test_custom_categories,
         tester.test_settings,
+        tester.test_receipt_settings,  # New test for receipt settings
         tester.test_today_stats,
         tester.test_daily_stats,
         tester.test_monthly_stats,
         tester.test_get_purchases,
         tester.test_create_purchase,
         tester.test_get_single_purchase,
+        tester.test_export_excel_all,  # New test for export without filter
+        tester.test_export_excel_with_date_filter,  # New test for export with date filter
         tester.test_delete_purchase,
     ]
     
