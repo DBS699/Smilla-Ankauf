@@ -25,12 +25,22 @@ const getIcon = (iconName) => {
   return iconMap[iconName] || Shirt;
 };
 
-// Default colors
+// Default colors for all elements
 const DEFAULT_COLORS = {
+  // Price levels
   luxus: '#FEF3C7',
   teuer: '#DBEAFE',
   mittel: '#D1FAE5',
-  guenstig: '#F1F5F9'
+  guenstig: '#F1F5F9',
+  // Conditions
+  neu: '#D1FAE5',
+  kaum_benutzt: '#E0F2FE',
+  gebraucht: '#FED7AA',
+  abgenutzt: '#FECACA',
+  // Relevance
+  stark_relevant: '#DDD6FE',
+  wichtig: '#CFFAFE',
+  nicht_beliebt: '#F3F4F6'
 };
 
 export default function MainPage() {
@@ -245,9 +255,9 @@ export default function MainPage() {
     }
   };
 
-  // Get color for price level
-  const getLevelColor = (levelId) => {
-    return colors[levelId] || DEFAULT_COLORS[levelId] || '#F1F5F9';
+  // Get color for any element
+  const getColor = (key) => {
+    return colors[key] || DEFAULT_COLORS[key] || '#F1F5F9';
   };
 
   // Cart sidebar content
@@ -486,7 +496,7 @@ export default function MainPage() {
                     key={level.id}
                     variant="outline"
                     className="w-full h-14 justify-start text-left level-btn border-2"
-                    style={{ backgroundColor: getLevelColor(level.id), borderColor: getLevelColor(level.id) }}
+                    style={{ backgroundColor: getColor(level.id), borderColor: getColor(level.id) }}
                     onClick={() => handleLevelSelect(level)}
                     data-testid={`level-${level.id}`}
                   >
@@ -520,7 +530,8 @@ export default function MainPage() {
                     <Button
                       key={condition.id}
                       variant="outline"
-                      className={`h-16 condition-badge ${condition.color}`}
+                      className="h-16 border-2 font-medium"
+                      style={{ backgroundColor: getColor(condition.id), borderColor: getColor(condition.id) }}
                       onClick={() => handleConditionSelect(condition)}
                       data-testid={`condition-${condition.id}`}
                     >
@@ -546,13 +557,14 @@ export default function MainPage() {
                   <Button
                     key={relevance.id}
                     variant="outline"
-                    className={`w-full h-14 justify-start text-left level-btn ${relevance.color}`}
+                    className="w-full h-14 justify-start text-left level-btn border-2"
+                    style={{ backgroundColor: getColor(relevance.id), borderColor: getColor(relevance.id) }}
                     onClick={() => handleRelevanceSelect(relevance)}
                     data-testid={`relevance-${relevance.id}`}
                   >
                     <div>
-                      <p className="font-semibold">{relevance.name}</p>
-                      <p className="text-xs opacity-70">{relevance.description}</p>
+                      <p className="font-semibold text-gray-800">{relevance.name}</p>
+                      <p className="text-xs text-gray-600">{relevance.description}</p>
                     </div>
                   </Button>
                 ))}
