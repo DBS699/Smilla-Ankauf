@@ -42,10 +42,24 @@ export const RELEVANCE_LEVELS = [
   { id: 'nicht_beliebt', name: 'Nicht beliebt', color: 'bg-gray-100 text-gray-800 border-gray-300', description: 'Geringe Nachfrage' },
 ];
 
-// Store info for receipts
-export const STORE_INFO = {
+// Store info for receipts (defaults, can be customized in settings)
+export const DEFAULT_STORE_INFO = {
   name: 'Smillå-Store GmbH',
   address: 'Musterstrasse 123',
   city: '8000 Zürich',
   phone: '+41 44 123 45 67',
+  footer: 'Vielen Dank für Ihren Verkauf!',
+  subFooter: 'Diese Quittung dient als Nachweis.',
 };
+
+// For backwards compatibility
+export const STORE_INFO = DEFAULT_STORE_INFO;
+
+// Available backgrounds
+export const BACKGROUNDS = [
+  { id: 'paper', name: 'Papier', class: 'bg-paper' },
+  { id: 'white', name: 'Weiss', class: 'bg-white' },
+  { id: 'cream', name: 'Creme', class: 'bg-cream' },
+  { id: 'gray', name: 'Grau', class: 'bg-gray-100' },
+  { id: 'slate', name: 'Schiefer', class: 'bg-slate-50' },
+];
