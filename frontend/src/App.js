@@ -11,28 +11,28 @@ import LoginPage from "@/pages/LoginPage";
 import api from "@/lib/api";
 
 // Background Context
-const BackgroundContext = createContext({ background: 'paper', setBackground: () => {} });
+const BackgroundContext = createContext({ darkMode: false, setDarkMode: () => {} });
 export const useBackground = () => useContext(BackgroundContext);
 
 function BackgroundProvider({ children }) {
-  const [background, setBackground] = useState('paper');
+  const [darkMode, setDarkMode] = useState(false);
 
   useEffect(() => {
-    const loadBackground = async () => {
+    const loadSettings = async () => {
       try {
         const settings = await api.getSettings();
-        if (settings?.background) {
-          setBackground(settings.background);
+        if (settings?.darkMode !== undefined) {
+          setDarkMode(settings.darkMode);
         }
       } catch (e) {
         // Ignore - use default
       }
     };
-    loadBackground();
+    loadSettings();
   }, []);
 
   return (
-    <BackgroundContext.Provider value={{ background, setBackground }}>
+    <BackgroundContext.Provider value={{ darkMode, setDarkMode }}>
       {children}
     </BackgroundContext.Provider>
   );
