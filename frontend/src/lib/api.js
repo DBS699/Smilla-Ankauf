@@ -82,9 +82,19 @@ export const api = {
     return response.data;
   },
 
-  downloadPriceMatrix: () => {
-    // Return URL for direct download
-    return `${API}/price-matrix/download`;
+  downloadPriceMatrix: async () => {
+    const response = await axios.get(`${API}/price-matrix/download`, {
+      responseType: 'blob'
+    });
+    // Create download link
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', 'preismatrix.xlsx');
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
   },
 
   uploadPriceMatrix: async (file) => {
@@ -98,6 +108,33 @@ export const api = {
 
   clearPriceMatrix: async () => {
     const response = await apiClient.delete('/price-matrix');
+    return response.data;
+  },
+
+  // Custom categories
+  getCustomCategories: async () => {
+    const response = await apiClient.get('/custom-categories');
+    return response.data;
+  },
+
+  addCustomCategory: async (name) => {
+    const response = await apiClient.post('/custom-categories', { name });
+    return response.data;
+  },
+
+  deleteCustomCategory: async (name) => {
+    const response = await apiClient.delete(`/custom-categories/${encodeURIComponent(name)}`);
+    return response.data;
+  },
+
+  // Settings
+  getSettings: async () => {
+    const response = await apiClient.get('/settings');
+    return response.data;
+  },
+
+  updateSettings: async (settings) => {
+    const response = await apiClient.put('/settings', settings);
     return response.data;
   }
 };
