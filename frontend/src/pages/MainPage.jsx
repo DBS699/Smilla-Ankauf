@@ -181,6 +181,16 @@ export default function MainPage() {
     }
   };
 
+  const handleChangeBackground = async (bgId) => {
+    setBackground(bgId);
+    try {
+      const currentSettings = await api.getSettings();
+      await api.updateSettings({ ...currentSettings, background: bgId });
+    } catch (error) {
+      console.error('Failed to save background:', error);
+    }
+  };
+
   const handleLogout = () => {
     logout();
     navigate('/login');
