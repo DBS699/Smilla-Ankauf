@@ -3,7 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { 
   Shirt, Layers, Ruler, Briefcase, Scissors, 
   Dumbbell, Waves, ShoppingBag, Trash2, History, 
-  Plus, X, Check, Settings, Zap, HelpCircle, ExternalLink, LogOut, User
+  Plus, X, Check, Settings, Zap, HelpCircle, ExternalLink, LogOut, User,
+  Crown, Star, Heart, Sparkles, Gem, Gift, Tag
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -18,7 +19,8 @@ import api from '@/lib/api';
 
 // Icon mapping
 const iconMap = {
-  Shirt, Layers, Ruler, Briefcase, Scissors, Dumbbell, Waves
+  Shirt, Layers, Ruler, Briefcase, Scissors, Dumbbell, Waves,
+  Crown, Star, Heart, Sparkles, Gem, Gift, Tag, ShoppingBag
 };
 
 const getIcon = (iconName) => {
