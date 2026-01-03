@@ -437,9 +437,10 @@ async def get_today_stats():
 
 # ============== Auth Routes ==============
 
+# Load user credentials from environment variables (with fallback for development)
 USERS = {
-    "admin": {"password": "1234", "role": "admin"},
-    "smilla": {"password": "1234", "role": "mitarbeiter"}
+    "admin": {"password": os.environ.get("ADMIN_PASSWORD", "1234"), "role": "admin"},
+    "smilla": {"password": os.environ.get("SMILLA_PASSWORD", "1234"), "role": "mitarbeiter"}
 }
 
 class LoginRequest(BaseModel):
