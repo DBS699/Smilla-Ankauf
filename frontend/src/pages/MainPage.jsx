@@ -4,7 +4,7 @@ import {
   Shirt, Layers, Ruler, Briefcase, Scissors, 
   Dumbbell, Waves, ShoppingBag, Trash2, History, 
   Plus, X, Check, Settings, Zap, HelpCircle, ExternalLink, LogOut, User,
-  Crown, Star, Heart, Sparkles, Gem, Gift, Tag, Minus
+  Crown, Star, Heart, Sparkles, Gem, Gift, Tag, Minus, Palette
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -14,7 +14,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Slider } from '@/components/ui/slider';
 import { toast } from 'sonner';
-import { CATEGORIES, PRICE_LEVELS, CONDITIONS, RELEVANCE_LEVELS } from '@/lib/constants';
+import { CATEGORIES, PRICE_LEVELS, CONDITIONS, RELEVANCE_LEVELS, BACKGROUNDS } from '@/lib/constants';
 import { useAuth } from '@/contexts/AuthContext';
 import api from '@/lib/api';
 
@@ -65,6 +65,7 @@ export default function MainPage() {
   const [colors, setColors] = useState(DEFAULT_COLORS);
   const [categoryIcons, setCategoryIcons] = useState({});
   const [hiddenCategories, setHiddenCategories] = useState([]);
+  const [background, setBackground] = useState('paper');
 
   useEffect(() => {
     loadTodayStats();
@@ -102,6 +103,9 @@ export default function MainPage() {
       }
       if (settings?.hidden_categories) {
         setHiddenCategories(settings.hidden_categories);
+      }
+      if (settings?.background) {
+        setBackground(settings.background);
       }
     } catch (error) {
       console.error('Failed to load settings:', error);
