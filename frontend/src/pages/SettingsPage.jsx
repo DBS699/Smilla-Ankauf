@@ -1,14 +1,16 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Download, Upload, Trash2, FileSpreadsheet, CheckCircle, AlertCircle, Plus, X, Palette, Shield, Image, Camera } from 'lucide-react';
+import { ArrowLeft, Download, Upload, Trash2, FileSpreadsheet, CheckCircle, AlertCircle, Plus, X, Palette, Shield, Image, Camera, Eye, EyeOff, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
+import { CATEGORIES } from '@/lib/constants';
 import api from '@/lib/api';
 
 export default function SettingsPage() {
@@ -17,7 +19,6 @@ export default function SettingsPage() {
   const [isDownloading, setIsDownloading] = useState(false);
   const [uploadResult, setUploadResult] = useState(null);
   const fileInputRef = useRef(null);
-  const imageInputRef = useRef(null);
   
   // Custom categories
   const [customCategories, setCustomCategories] = useState([]);
@@ -40,7 +41,8 @@ export default function SettingsPage() {
       stark_relevant: '#DDD6FE',
       wichtig: '#CFFAFE',
       nicht_beliebt: '#F3F4F6'
-    }
+    },
+    hidden_categories: []
   });
 
   useEffect(() => {
@@ -54,10 +56,12 @@ export default function SettingsPage() {
         api.getSettings()
       ]);
       setCustomCategories(categoriesData);
-      if (settingsData?.colors) {
+      if (settingsData) {
         setSettings(prev => ({
           ...prev,
-          colors: { ...prev.colors, ...settingsData.colors }
+          ...settingsData,
+          colors: { ...prev.colors, ...settingsData.colors },
+          hidden_categories: settingsData.hidden_categories || []
         }));
       }
     } catch (error) {
@@ -69,7 +73,7 @@ export default function SettingsPage() {
     setIsDownloading(true);
     try {
       await api.downloadPriceMatrix();
-      toast.success('Excel heruntergeladen (inkl. eigener Kategorien)');
+      toast.success('Excel heruntergeladen');
     } catch (error) {
       toast.error('Fehler beim Download');
     } finally {
@@ -131,7 +135,7 @@ export default function SettingsPage() {
       return;
     }
 
-    if (file.size > 500000) { // 500KB limit
+    if (file.size > 500000) {
       toast.error('Bild zu gross (max 500KB)');
       return;
     }
@@ -202,6 +206,52 @@ export default function SettingsPage() {
     }
   };
 
+  // Toggle category visibility
+  const toggleCategoryVisibility = async (categoryName) => {
+    const isHidden = settings.hidden_categories.includes(categoryName);
+    let newHidden;
+    
+    if (isHidden) {
+      newHidden = settings.hidden_categories.filter(c => c !== categoryName);
+    } else {
+      newHidden = [...settings.hidden_categories, categoryName];
+    }
+    
+    setSettings(prev => ({ ...prev, hidden_categories: newHidden }));
+    
+    try {
+      await api.updateSettings({ ...settings, hidden_categories: newHidden });
+      toast.success(isHidden ? `"${categoryName}" wieder sichtbar` : `"${categoryName}" ausgeblendet`);
+    } catch (error) {
+      toast.error('Fehler beim Speichern');
+    }
+  };
+
+  // Hide all standard categories
+  const hideAllStandardCategories = async () => {
+    const allStandardNames = CATEGORIES.map(c => c.name);
+    setSettings(prev => ({ ...prev, hidden_categories: allStandardNames }));
+    
+    try {
+      await api.updateSettings({ ...settings, hidden_categories: allStandardNames });
+      toast.success('Alle Standard-Kategorien ausgeblendet');
+    } catch (error) {
+      toast.error('Fehler beim Speichern');
+    }
+  };
+
+  // Show all standard categories
+  const showAllStandardCategories = async () => {
+    setSettings(prev => ({ ...prev, hidden_categories: [] }));
+    
+    try {
+      await api.updateSettings({ ...settings, hidden_categories: [] });
+      toast.success('Alle Standard-Kategorien wiederhergestellt');
+    } catch (error) {
+      toast.error('Fehler beim Speichern');
+    }
+  };
+
   const colorGroups = [
     {
       title: 'Preisniveau',
@@ -231,6 +281,8 @@ export default function SettingsPage() {
     }
   ];
 
+  const hiddenCount = settings.hidden_categories.length;
+
   return (
     <div className="min-h-screen" data-testid="settings-page">
       <header className="bg-white border-b sticky top-0 z-40">
@@ -249,12 +301,167 @@ export default function SettingsPage() {
       </header>
 
       <div className="container mx-auto px-4 py-6 lg:py-8 max-w-4xl">
-        <Tabs defaultValue="prices" className="space-y-6">
+        <Tabs defaultValue="categories" className="space-y-6">
           <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="prices">Preismatrix</TabsTrigger>
             <TabsTrigger value="categories">Kategorien</TabsTrigger>
+            <TabsTrigger value="prices">Preismatrix</TabsTrigger>
             <TabsTrigger value="design">Design</TabsTrigger>
           </TabsList>
+
+          {/* Categories Tab */}
+          <TabsContent value="categories" className="space-y-6">
+            {/* Standard Categories Management */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <Eye className="w-5 h-5" />
+                    Standard-Kategorien ({17 - hiddenCount} sichtbar)
+                  </span>
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={hideAllStandardCategories}
+                      disabled={hiddenCount === 17}
+                    >
+                      <EyeOff className="w-4 h-4 mr-1" />
+                      Alle ausblenden
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={showAllStandardCategories}
+                      disabled={hiddenCount === 0}
+                    >
+                      <RotateCcw className="w-4 h-4 mr-1" />
+                      Alle wiederherstellen
+                    </Button>
+                  </div>
+                </CardTitle>
+                <CardDescription>
+                  Blende Standard-Kategorien aus, die du nicht brauchst
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {CATEGORIES.map((cat) => {
+                    const isHidden = settings.hidden_categories.includes(cat.name);
+                    return (
+                      <div 
+                        key={cat.id}
+                        className={`flex items-center justify-between p-3 rounded-lg border ${isHidden ? 'bg-gray-100 opacity-60' : 'bg-white'}`}
+                      >
+                        <span className={`text-sm ${isHidden ? 'line-through text-gray-400' : ''}`}>
+                          {cat.name}
+                        </span>
+                        <Switch
+                          checked={!isHidden}
+                          onCheckedChange={() => toggleCategoryVisibility(cat.name)}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Custom Categories */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Image className="w-5 h-5" />
+                  Eigene Kategorien ({customCategories.length})
+                </CardTitle>
+                <CardDescription>
+                  Füge eigene Kategorien mit Bild hinzu (max 500KB)
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex gap-3 items-end">
+                  <div className="flex-1">
+                    <Label>Name</Label>
+                    <Input
+                      placeholder="z.B. Accessoires"
+                      value={newCategoryName}
+                      onChange={(e) => setNewCategoryName(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label>Bild</Label>
+                    <div className="flex gap-2">
+                      {newCategoryImage ? (
+                        <div className="relative w-10 h-10">
+                          <img src={newCategoryImage} alt="Preview" className="w-10 h-10 rounded object-cover" />
+                          <button 
+                            className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 text-xs"
+                            onClick={() => setNewCategoryImage(null)}
+                          >×</button>
+                        </div>
+                      ) : (
+                        <Button variant="outline" size="icon" onClick={() => document.getElementById('new-cat-image').click()}>
+                          <Camera className="w-4 h-4" />
+                        </Button>
+                      )}
+                      <input
+                        id="new-cat-image"
+                        type="file"
+                        className="hidden"
+                        accept="image/*"
+                        onChange={(e) => handleImageSelect(e, true)}
+                      />
+                    </div>
+                  </div>
+                  <Button onClick={handleAddCategory} disabled={isAddingCategory}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Hinzufügen
+                  </Button>
+                </div>
+
+                {customCategories.length > 0 && (
+                  <div className="space-y-2 mt-6">
+                    <div className="grid gap-3">
+                      {customCategories.map((cat) => (
+                        <div key={cat.name} className="flex items-center gap-3 bg-muted p-3 rounded-lg">
+                          {cat.image ? (
+                            <img src={cat.image} alt={cat.name} className="w-12 h-12 rounded object-cover" />
+                          ) : (
+                            <div className="w-12 h-12 rounded bg-gray-200 flex items-center justify-center">
+                              <Image className="w-6 h-6 text-gray-400" />
+                            </div>
+                          )}
+                          <span className="flex-1 font-medium">{cat.name}</span>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => {
+                              setEditingCategory(cat.name);
+                              document.getElementById('edit-cat-image').click();
+                            }}
+                          >
+                            <Camera className="w-4 h-4 mr-1" />
+                            Bild
+                          </Button>
+                          {isAdmin() && (
+                            <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDeleteCategory(cat.name)}>
+                              <X className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    <input
+                      id="edit-cat-image"
+                      type="file"
+                      className="hidden"
+                      accept="image/*"
+                      onChange={(e) => handleImageSelect(e, false)}
+                    />
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           {/* Prices Tab */}
           <TabsContent value="prices" className="space-y-6">
@@ -262,12 +469,12 @@ export default function SettingsPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <FileSpreadsheet className="w-5 h-5" />
-                  Preismatrix (inkl. eigener Kategorien)
+                  Preismatrix
                 </CardTitle>
+                <CardDescription>
+                  Excel enthält alle sichtbaren Standard- UND eigene Kategorien
+                </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4 text-sm text-muted-foreground">
-                <p>Die Excel enthält alle Standard- UND eigene Kategorien.</p>
-              </CardContent>
             </Card>
 
             <div className="grid gap-4 md:grid-cols-2">
@@ -340,114 +547,6 @@ export default function SettingsPage() {
                 </CardContent>
               </Card>
             )}
-          </TabsContent>
-
-          {/* Categories Tab */}
-          <TabsContent value="categories" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Image className="w-5 h-5" />
-                  Eigene Kategorien mit Bild
-                </CardTitle>
-                <CardDescription>
-                  Füge Kategorien mit eigenem Bild hinzu (max 500KB)
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Add new category */}
-                <div className="flex gap-3 items-end">
-                  <div className="flex-1">
-                    <Label>Name</Label>
-                    <Input
-                      placeholder="z.B. Accessoires"
-                      value={newCategoryName}
-                      onChange={(e) => setNewCategoryName(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <Label>Bild</Label>
-                    <div className="flex gap-2">
-                      {newCategoryImage ? (
-                        <div className="relative w-10 h-10">
-                          <img src={newCategoryImage} alt="Preview" className="w-10 h-10 rounded object-cover" />
-                          <button 
-                            className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 text-xs"
-                            onClick={() => setNewCategoryImage(null)}
-                          >×</button>
-                        </div>
-                      ) : (
-                        <Button variant="outline" size="icon" onClick={() => document.getElementById('new-cat-image').click()}>
-                          <Camera className="w-4 h-4" />
-                        </Button>
-                      )}
-                      <input
-                        id="new-cat-image"
-                        type="file"
-                        className="hidden"
-                        accept="image/*"
-                        onChange={(e) => handleImageSelect(e, true)}
-                      />
-                    </div>
-                  </div>
-                  <Button onClick={handleAddCategory} disabled={isAddingCategory}>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Hinzufügen
-                  </Button>
-                </div>
-
-                {/* Existing custom categories */}
-                {customCategories.length > 0 && (
-                  <div className="space-y-2 mt-6">
-                    <Label>Eigene Kategorien ({customCategories.length})</Label>
-                    <div className="grid gap-3">
-                      {customCategories.map((cat) => (
-                        <div key={cat.name} className="flex items-center gap-3 bg-muted p-3 rounded-lg">
-                          {cat.image ? (
-                            <img src={cat.image} alt={cat.name} className="w-12 h-12 rounded object-cover" />
-                          ) : (
-                            <div className="w-12 h-12 rounded bg-gray-200 flex items-center justify-center">
-                              <Image className="w-6 h-6 text-gray-400" />
-                            </div>
-                          )}
-                          <span className="flex-1 font-medium">{cat.name}</span>
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => {
-                              setEditingCategory(cat.name);
-                              document.getElementById('edit-cat-image').click();
-                            }}
-                          >
-                            <Camera className="w-4 h-4 mr-1" />
-                            Bild
-                          </Button>
-                          {isAdmin() && (
-                            <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDeleteCategory(cat.name)}>
-                              <X className="w-4 h-4" />
-                            </Button>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                    <input
-                      id="edit-cat-image"
-                      type="file"
-                      className="hidden"
-                      accept="image/*"
-                      onChange={(e) => handleImageSelect(e, false)}
-                    />
-                  </div>
-                )}
-
-                <div className="border-t pt-4 mt-4">
-                  <Label className="text-muted-foreground">Standard-Kategorien (17)</Label>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Kleider, Strickmode, Sweatshirt, Hoodie, Hosen, Jeans, Jacken, Blazer, Mäntel, Shirts, Top, Hemd, Bluse, Röcke, Sport, Bademode, Shorts
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
           </TabsContent>
 
           {/* Design Tab */}
