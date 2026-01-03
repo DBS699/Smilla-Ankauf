@@ -366,6 +366,61 @@ async def get_today_stats():
         "total_items": total_items
     }
 
+# ============== Custom Categories Routes ==============
+
+@api_router.get("/custom-categories")
+async def get_custom_categories():
+    categories = await db.custom_categories.find({}, {"_id": 0}).to_list(100)
+    return [c["name"] for c in categories]
+
+@api_router.post("/custom-categories")
+async def add_custom_category(data: dict):
+    name = data.get("name", "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Name erforderlich")
+    if name in CATEGORIES:
+        raise HTTPException(status_code=400, detail="Kategorie existiert bereits")
+    
+    existing = await db.custom_categories.find_one({"name": name})
+    if existing:
+        raise HTTPException(status_code=400, detail="Kategorie existiert bereits")
+    
+    await db.custom_categories.insert_one({"name": name})
+    return {"message": f"Kategorie '{name}' hinzugefügt"}
+
+@api_router.delete("/custom-categories/{name}")
+async def delete_custom_category(name: str):
+    result = await db.custom_categories.delete_one({"name": name})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Kategorie nicht gefunden")
+    return {"message": f"Kategorie '{name}' gelöscht"}
+
+# ============== Settings Routes ==============
+
+@api_router.get("/settings")
+async def get_settings():
+    settings = await db.app_settings.find_one({"type": "general"}, {"_id": 0})
+    if not settings:
+        return {
+            "danger_zone_password": "",
+            "colors": {
+                "luxus": "#FEF3C7",
+                "teuer": "#DBEAFE",
+                "mittel": "#D1FAE5",
+                "guenstig": "#F1F5F9"
+            }
+        }
+    return settings
+
+@api_router.put("/settings")
+async def update_settings(data: dict):
+    await db.app_settings.update_one(
+        {"type": "general"},
+        {"$set": {**data, "type": "general"}},
+        upsert=True
+    )
+    return {"message": "Einstellungen gespeichert"}
+
 # ============== App Setup ==============
 
 app.include_router(api_router)
