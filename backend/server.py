@@ -321,7 +321,11 @@ async def export_purchases_excel(start_date: Optional[str] = None, end_date: Opt
             # Add time to include the entire end day
             query["timestamp"]["$lte"] = end_date + "T23:59:59"
     
-    purchases = await db.purchases.find(query, {"_id": 0}).sort("timestamp", -1).to_list(100000)
+    # Optimized: Only fetch required fields, limit to 50000 for performance
+    purchases = await db.purchases.find(
+        query, 
+        {"_id": 0, "id": 1, "timestamp": 1, "total": 1, "items": 1}
+    ).sort("timestamp", -1).to_list(50000)
     
     # Flatten purchases into rows (one row per item)
     rows = []
