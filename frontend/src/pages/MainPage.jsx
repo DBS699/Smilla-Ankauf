@@ -147,9 +147,9 @@ export default function MainPage() {
   };
 
   const handleOpenGoogleLens = () => {
-    // Open Google Lens in a new tab
-    window.open('https://lens.google.com/', '_blank');
-    toast.info('Google Lens geöffnet - komm zurück wenn du das Preisniveau weisst!');
+    // Open Google Image Search in a new tab (Google Lens is blocked in some environments)
+    window.open('https://www.google.com/imghp?hl=de', '_blank');
+    toast.info('Google Bildersuche geöffnet - komm zurück wenn du das Preisniveau weisst!');
   };
 
   const handleAddToCart = () => {
@@ -475,7 +475,7 @@ export default function MainPage() {
                   data-testid="unsicher-btn"
                 >
                   <HelpCircle className="w-4 h-4 mr-2" />
-                  Unsicher? Google Lens öffnen
+                  Unsicher? Google Bildersuche
                   <ExternalLink className="w-3 h-3 ml-2" />
                 </Button>
               </div>
