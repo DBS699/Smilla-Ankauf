@@ -63,6 +63,43 @@ export const api = {
     const response = await apiClient.get('/stats/today');
     return response.data;
   },
+
+  // Price Matrix APIs
+  lookupFixedPrice: async (category, priceLevel, condition, relevance) => {
+    const response = await apiClient.get('/price-matrix/lookup', {
+      params: {
+        category,
+        price_level: priceLevel,
+        condition,
+        relevance
+      }
+    });
+    return response.data;
+  },
+
+  getPriceMatrix: async () => {
+    const response = await apiClient.get('/price-matrix');
+    return response.data;
+  },
+
+  downloadPriceMatrix: () => {
+    // Return URL for direct download
+    return `${API}/price-matrix/download`;
+  },
+
+  uploadPriceMatrix: async (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await axios.post(`${API}/price-matrix/upload`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return response.data;
+  },
+
+  clearPriceMatrix: async () => {
+    const response = await apiClient.delete('/price-matrix');
+    return response.data;
+  }
 };
 
 export default api;
