@@ -60,6 +60,14 @@ Eine App für den Ankauf von Kleidung bauen, basierend auf einer Excel-Vorlage. 
 - ✅ +/- Buttons für Feinanpassung (±1 CHF, ±0.50 CHF)
 - ✅ Mehr Schnellwahl-Buttons (1,2,3,5,8,10,15,20,25,30,40,50)
 
+### Phase 7 - Drucker & PWA (03.01.2026)
+- ✅ Quittung optimiert für Epson TM-m30II (80mm Thermobondrucker)
+- ✅ CSS @media print für 80mm Papierbreite
+- ✅ Monospace-Font für saubere Ausrichtung auf Bon
+- ✅ PWA-Manifest für Home-Screen Installation
+- ✅ iOS & Android kompatibel (kann wie App installiert werden)
+- ✅ Grosser "Bon drucken" Button
+
 ## Tech Stack
 - **Frontend**: React + Tailwind CSS + Shadcn/UI
 - **Backend**: FastAPI (Python)
