@@ -320,22 +320,42 @@ class ReWearPOSAPITester:
         if not success:
             return False
             
-        # Verify settings structure
+        # Verify settings structure includes all color groups
         if 'colors' in response:
             colors = response['colors']
-            required_colors = ['luxus', 'teuer', 'mittel', 'guenstig']
-            if all(color in colors for color in required_colors):
-                print(f"   ✅ Settings structure correct with all color keys")
-                print(f"   🎨 Colors: {colors}")
+            # Check for all three color groups: Preisniveau, Zustand, Relevanz
+            required_colors = [
+                'luxus', 'teuer', 'mittel', 'guenstig',  # Preisniveau
+                'neu', 'kaum_benutzt', 'gebraucht', 'abgenutzt',  # Zustand
+                'stark_relevant', 'wichtig', 'nicht_beliebt'  # Relevanz
+            ]
+            
+            missing_colors = [color for color in required_colors if color not in colors]
+            if not missing_colors:
+                print(f"   ✅ Settings structure correct with all color groups (Preisniveau, Zustand, Relevanz)")
+                print(f"   🎨 Total colors configured: {len(colors)}")
                 
-                # Test updating settings
+                # Test updating settings with all color groups
                 test_settings = {
                     "danger_zone_password": "test123",
                     "colors": {
+                        # Preisniveau
                         "luxus": "#FF0000",
                         "teuer": "#00FF00", 
                         "mittel": "#0000FF",
-                        "guenstig": "#FFFF00"
+                        "guenstig": "#FFFF00",
+                        # Zustand
+                        "neu": "#00FFFF",
+                        "kaum_benutzt": "#FF00FF",
+                        "gebraucht": "#FFA500",
+                        "abgenutzt": "#800080",
+                        # Relevanz
+                        "stark_relevant": "#008000",
+                        "wichtig": "#000080",
+                        "nicht_beliebt": "#808080"
+                    },
+                    "category_icons": {
+                        "Test Category": "Star"
                     }
                 }
                 
@@ -361,15 +381,30 @@ class ReWearPOSAPITester:
                     if success and response.get('danger_zone_password') == 'test123':
                         print(f"   ✅ Settings verification successful")
                         
+                        # Check if category_icons were saved
+                        if 'category_icons' in response and response['category_icons'].get('Test Category') == 'Star':
+                            print(f"   ✅ Category icons saved correctly")
+                        
                         # Reset settings to default
                         default_settings = {
                             "danger_zone_password": "",
                             "colors": {
+                                # Preisniveau
                                 "luxus": "#FEF3C7",
                                 "teuer": "#DBEAFE",
                                 "mittel": "#D1FAE5",
-                                "guenstig": "#F1F5F9"
-                            }
+                                "guenstig": "#F1F5F9",
+                                # Zustand
+                                "neu": "#D1FAE5",
+                                "kaum_benutzt": "#E0F2FE",
+                                "gebraucht": "#FED7AA",
+                                "abgenutzt": "#FECACA",
+                                # Relevanz
+                                "stark_relevant": "#DDD6FE",
+                                "wichtig": "#CFFAFE",
+                                "nicht_beliebt": "#F3F4F6"
+                            },
+                            "category_icons": {}
                         }
                         
                         self.run_test(
@@ -388,10 +423,114 @@ class ReWearPOSAPITester:
                     print(f"   ❌ Failed to update settings")
                     return False
             else:
-                print(f"   ❌ Settings missing required color keys")
+                print(f"   ❌ Settings missing required color keys: {missing_colors}")
                 return False
         else:
             print(f"   ❌ Settings response missing 'colors' field")
+            return False
+
+    def test_login_system(self):
+        """Test login system with admin and smilla users"""
+        # Test admin login
+        success, response = self.run_test(
+            "Admin Login",
+            "POST",
+            "api/auth/login",
+            200,
+            data={"username": "admin", "password": "1234"}
+        )
+        
+        if not success:
+            return False
+            
+        if response.get('username') == 'admin' and response.get('role') == 'admin':
+            print(f"   ✅ Admin login successful with correct role")
+        else:
+            print(f"   ❌ Admin login response incorrect: {response}")
+            return False
+            
+        # Test smilla login
+        success, response = self.run_test(
+            "Smilla Login",
+            "POST",
+            "api/auth/login",
+            200,
+            data={"username": "smilla", "password": "1234"}
+        )
+        
+        if not success:
+            return False
+            
+        if response.get('username') == 'smilla' and response.get('role') == 'mitarbeiter':
+            print(f"   ✅ Smilla login successful with correct role")
+        else:
+            print(f"   ❌ Smilla login response incorrect: {response}")
+            return False
+            
+        # Test invalid login
+        success, response = self.run_test(
+            "Invalid Login",
+            "POST",
+            "api/auth/login",
+            401,
+            data={"username": "invalid", "password": "wrong"}
+        )
+        
+        if success:
+            print(f"   ✅ Invalid login correctly rejected")
+        else:
+            print(f"   ❌ Invalid login should return 401")
+            return False
+            
+        # Test wrong password
+        success, response = self.run_test(
+            "Wrong Password",
+            "POST",
+            "api/auth/login",
+            401,
+            data={"username": "admin", "password": "wrong"}
+        )
+        
+        if success:
+            print(f"   ✅ Wrong password correctly rejected")
+            return True
+        else:
+            print(f"   ❌ Wrong password should return 401")
+            return False
+
+    def test_get_users(self):
+        """Test getting available users"""
+        success, response = self.run_test(
+            "Get Users",
+            "GET",
+            "api/auth/users",
+            200
+        )
+        
+        if not success:
+            return False
+            
+        if isinstance(response, list) and len(response) == 2:
+            usernames = [user.get('username') for user in response]
+            roles = [user.get('role') for user in response]
+            
+            if 'admin' in usernames and 'smilla' in usernames:
+                print(f"   ✅ Both users found: {usernames}")
+                
+                admin_user = next(user for user in response if user['username'] == 'admin')
+                smilla_user = next(user for user in response if user['username'] == 'smilla')
+                
+                if admin_user['role'] == 'admin' and smilla_user['role'] == 'mitarbeiter':
+                    print(f"   ✅ User roles correct: admin={admin_user['role']}, smilla={smilla_user['role']}")
+                    return True
+                else:
+                    print(f"   ❌ User roles incorrect")
+                    return False
+            else:
+                print(f"   ❌ Expected admin and smilla users, got: {usernames}")
+                return False
+        else:
+            print(f"   ❌ Expected 2 users, got: {len(response) if isinstance(response, list) else 'not a list'}")
             return False
 
 def main():
