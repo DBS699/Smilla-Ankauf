@@ -398,7 +398,11 @@ async def get_daily_stats(days: int = 30):
 
 @api_router.get("/stats/monthly", response_model=List[MonthlyStats])
 async def get_monthly_stats(months: int = 12):
-    purchases = await db.purchases.find({}, {"_id": 0}).to_list(100000)
+    # Optimized: Only fetch required fields and limit results
+    purchases = await db.purchases.find(
+        {}, 
+        {"_id": 0, "timestamp": 1, "total": 1}
+    ).to_list(50000)
     
     monthly_data = {}
     for p in purchases:
@@ -419,10 +423,11 @@ async def get_monthly_stats(months: int = 12):
 async def get_today_stats():
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     
+    # Optimized: Use date range query instead of regex, only fetch needed fields
     purchases = await db.purchases.find(
-        {"timestamp": {"$regex": f"^{today}"}},
-        {"_id": 0}
-    ).to_list(10000)
+        {"timestamp": {"$gte": today, "$lt": today + "T23:59:59"}},
+        {"_id": 0, "total": 1, "items": 1}
+    ).to_list(1000)
     
     total_purchases = len(purchases)
     total_amount = sum(p["total"] for p in purchases)
