@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { 
   Shirt, Layers, Ruler, Briefcase, Scissors, 
   Dumbbell, Waves, ShoppingBag, Trash2, History, 
-  Plus, X, Check, Settings, Zap
+  Plus, X, Check, Settings, Zap, HelpCircle, ExternalLink
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -23,6 +23,14 @@ const getIcon = (iconName) => {
   return iconMap[iconName] || Shirt;
 };
 
+// Default colors
+const DEFAULT_COLORS = {
+  luxus: '#FEF3C7',
+  teuer: '#DBEAFE',
+  mittel: '#D1FAE5',
+  guenstig: '#F1F5F9'
+};
+
 export default function MainPage() {
   const [cart, setCart] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null);
@@ -36,9 +44,13 @@ export default function MainPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
   const [isCheckingPrice, setIsCheckingPrice] = useState(false);
+  const [customCategories, setCustomCategories] = useState([]);
+  const [colors, setColors] = useState(DEFAULT_COLORS);
 
   useEffect(() => {
     loadTodayStats();
+    loadCustomCategories();
+    loadSettings();
   }, []);
 
   const loadTodayStats = async () => {
@@ -49,6 +61,32 @@ export default function MainPage() {
       console.error('Failed to load stats:', error);
     }
   };
+
+  const loadCustomCategories = async () => {
+    try {
+      const cats = await api.getCustomCategories();
+      setCustomCategories(cats);
+    } catch (error) {
+      console.error('Failed to load custom categories:', error);
+    }
+  };
+
+  const loadSettings = async () => {
+    try {
+      const settings = await api.getSettings();
+      if (settings?.colors) {
+        setColors({ ...DEFAULT_COLORS, ...settings.colors });
+      }
+    } catch (error) {
+      console.error('Failed to load settings:', error);
+    }
+  };
+
+  // Combine default and custom categories
+  const allCategories = [
+    ...CATEGORIES,
+    ...customCategories.map(name => ({ id: name.toLowerCase().replace(/\s+/g, '_'), name, icon: 'Shirt' }))
+  ];
 
   const openCategoryDialog = (category) => {
     setSelectedCategory(category);
@@ -85,7 +123,6 @@ export default function MainPage() {
     setIsCheckingPrice(true);
     
     try {
-      // Check if there's a fixed price for this combination
       const result = await api.lookupFixedPrice(
         selectedCategory.name,
         selectedLevel.name,
@@ -107,6 +144,12 @@ export default function MainPage() {
       setIsCheckingPrice(false);
       setDialogStep(4);
     }
+  };
+
+  const handleOpenGoogleLens = () => {
+    // Open Google Lens in a new tab
+    window.open('https://lens.google.com/', '_blank');
+    toast.info('Google Lens geöffnet - komm zurück wenn du das Preisniveau weisst!');
   };
 
   const handleAddToCart = () => {
@@ -131,7 +174,6 @@ export default function MainPage() {
     closeDialog();
   };
 
-  // Quick add when fixed price exists
   const handleQuickAdd = () => {
     if (fixedPrice === null) return;
     
@@ -182,7 +224,6 @@ export default function MainPage() {
       loadTodayStats();
       setIsMobileCartOpen(false);
       
-      // Open receipt in new tab with slight delay
       setTimeout(() => {
         window.open(`/receipt/${purchase.id}`, '_blank');
       }, 100);
@@ -192,6 +233,11 @@ export default function MainPage() {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  // Get color for price level
+  const getLevelColor = (levelId) => {
+    return colors[levelId] || DEFAULT_COLORS[levelId] || '#F1F5F9';
   };
 
   // Cart sidebar content
@@ -301,7 +347,6 @@ export default function MainPage() {
           </div>
           
           <div className="flex items-center gap-4">
-            {/* Today's stats */}
             <div className="hidden md:flex items-center gap-6 text-sm">
               <div className="text-center">
                 <p className="text-muted-foreground">Heute</p>
@@ -320,7 +365,7 @@ export default function MainPage() {
             <Link to="/settings">
               <Button variant="outline" size="sm" data-testid="settings-link">
                 <Settings className="w-4 h-4 mr-2" />
-                Preise
+                Einstellungen
               </Button>
             </Link>
 
@@ -331,7 +376,6 @@ export default function MainPage() {
               </Button>
             </Link>
 
-            {/* Mobile cart trigger */}
             <Sheet open={isMobileCartOpen} onOpenChange={setIsMobileCartOpen}>
               <SheetTrigger asChild>
                 <Button variant="outline" size="sm" className="lg:hidden relative" data-testid="mobile-cart-btn">
@@ -357,11 +401,10 @@ export default function MainPage() {
       {/* Main content */}
       <div className="container mx-auto px-4 py-6 lg:py-8">
         <div className="flex gap-8">
-          {/* Categories grid */}
           <main className="flex-1">
             <h2 className="text-lg font-semibold mb-4 text-muted-foreground">Kategorie wählen</h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-              {CATEGORIES.map((category) => {
+              {allCategories.map((category) => {
                 const Icon = getIcon(category.icon);
                 return (
                   <Card
@@ -378,7 +421,6 @@ export default function MainPage() {
             </div>
           </main>
 
-          {/* Desktop cart sidebar */}
           <aside className="hidden lg:block w-80 xl:w-96">
             <div className="sticky top-24 bg-white rounded-xl p-6 sidebar-shadow min-h-[500px]">
               <CartContent />
@@ -413,16 +455,29 @@ export default function MainPage() {
                   <Button
                     key={level.id}
                     variant="outline"
-                    className={`w-full h-14 justify-start text-left level-btn ${level.color}`}
+                    className="w-full h-14 justify-start text-left level-btn border-2"
+                    style={{ backgroundColor: getLevelColor(level.id), borderColor: getLevelColor(level.id) }}
                     onClick={() => handleLevelSelect(level)}
                     data-testid={`level-${level.id}`}
                   >
                     <div>
-                      <p className="font-semibold">{level.name}</p>
-                      <p className="text-xs opacity-70">{level.description}</p>
+                      <p className="font-semibold text-gray-800">{level.name}</p>
+                      <p className="text-xs text-gray-600">{level.description}</p>
                     </div>
                   </Button>
                 ))}
+                
+                {/* Unsicher Button */}
+                <Button
+                  variant="outline"
+                  className="w-full h-12 justify-center border-dashed border-2 text-muted-foreground hover:text-primary"
+                  onClick={handleOpenGoogleLens}
+                  data-testid="unsicher-btn"
+                >
+                  <HelpCircle className="w-4 h-4 mr-2" />
+                  Unsicher? Google Lens öffnen
+                  <ExternalLink className="w-3 h-3 ml-2" />
+                </Button>
               </div>
             )}
 
