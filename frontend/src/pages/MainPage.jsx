@@ -4,7 +4,7 @@ import {
   Shirt, Layers, Ruler, Briefcase, Scissors, 
   Dumbbell, Waves, ShoppingBag, Trash2, History, 
   Plus, X, Check, Settings, Zap, HelpCircle, ExternalLink, LogOut, User,
-  Crown, Star, Heart, Sparkles, Gem, Gift, Tag
+  Crown, Star, Heart, Sparkles, Gem, Gift, Tag, Minus
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { Slider } from '@/components/ui/slider';
 import { toast } from 'sonner';
 import { CATEGORIES, PRICE_LEVELS, CONDITIONS, RELEVANCE_LEVELS } from '@/lib/constants';
 import { useAuth } from '@/contexts/AuthContext';
