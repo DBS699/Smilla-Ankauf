@@ -63,6 +63,7 @@ export default function MainPage() {
   const [customCategories, setCustomCategories] = useState([]);
   const [colors, setColors] = useState(DEFAULT_COLORS);
   const [categoryIcons, setCategoryIcons] = useState({});
+  const [hiddenCategories, setHiddenCategories] = useState([]);
 
   useEffect(() => {
     loadTodayStats();
@@ -98,14 +99,17 @@ export default function MainPage() {
       if (settings?.category_icons) {
         setCategoryIcons(settings.category_icons);
       }
+      if (settings?.hidden_categories) {
+        setHiddenCategories(settings.hidden_categories);
+      }
     } catch (error) {
       console.error('Failed to load settings:', error);
     }
   };
 
-  // Combine default and custom categories
+  // Combine default and custom categories, filter out hidden ones
   const allCategories = [
-    ...CATEGORIES,
+    ...CATEGORIES.filter(cat => !hiddenCategories.includes(cat.name)),
     ...customCategories.map(cat => ({ 
       id: cat.name.toLowerCase().replace(/\s+/g, '_'), 
       name: cat.name, 
