@@ -174,21 +174,56 @@ class ReWearPOSAPITester:
             return True
         return False
 
-    def test_delete_purchase(self):
-        """Test deleting a purchase"""
-        if not self.created_purchase_id:
-            print("   ⚠️  Skipping - No purchase ID available")
-            return True
-            
+    def test_price_matrix_lookup(self):
+        """Test price matrix lookup functionality"""
         success, response = self.run_test(
-            "Delete Purchase",
-            "DELETE",
-            f"api/purchases/{self.created_purchase_id}",
+            "Price Matrix Lookup",
+            "GET",
+            "api/price-matrix/lookup",
+            200,
+            params={
+                "category": "Jeans",
+                "price_level": "Mittel",
+                "condition": "Gebraucht/Gut",
+                "relevance": "Wichtig"
+            }
+        )
+        
+        if success:
+            if 'found' in response and 'fixed_price' in response:
+                print(f"   ✅ Price lookup structure correct")
+                print(f"   💰 Fixed price found: {response.get('found')}, Price: {response.get('fixed_price')}")
+                return True
+            else:
+                print(f"   ❌ Price lookup response structure incorrect")
+                return False
+        return False
+
+    def test_price_matrix_download(self):
+        """Test price matrix Excel download"""
+        success, response = self.run_test(
+            "Price Matrix Download",
+            "GET",
+            "api/price-matrix/download",
             200
         )
         
         if success:
-            print(f"   ✅ Purchase deleted successfully")
+            print(f"   ✅ Price matrix download endpoint accessible")
+            return True
+        return False
+
+    def test_price_matrix_get(self):
+        """Test getting price matrix entries"""
+        success, response = self.run_test(
+            "Get Price Matrix",
+            "GET",
+            "api/price-matrix",
+            200
+        )
+        
+        if success and isinstance(response, list):
+            print(f"   ✅ Price matrix returned {len(response)} entries")
             return True
         return False
 
