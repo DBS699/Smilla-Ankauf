@@ -169,27 +169,75 @@ frontend:
 
   - task: "Export with date filter UI"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/frontend/src/pages/HistoryPage.jsx"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Added date filter popover with 'Von Datum' and 'Bis Datum' inputs"
+      - working: true
+        agent: "testing"
+        comment: "✅ TESTED: Export with date filter UI fully functional. Popover opens correctly with 'Von Datum' and 'Bis Datum' date inputs, 'Alle' and 'Gefiltert' buttons present and working. Date selection works correctly. Both export options (all/filtered) function properly."
 
   - task: "Responsive design for tablet/smartphone"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/frontend/src/index.css"
     stuck_count: 0
     priority: "medium"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Added responsive CSS for mobile (3 cols) and tablet (4 cols), compact header buttons"
+      - working: true
+        agent: "testing"
+        comment: "✅ TESTED: Responsive design working correctly. Mobile (375px): Category grid shows 3 columns, header buttons show icons only. Tablet (768px): Header text becomes visible. Layout adapts properly across different viewport sizes."
+
+  - task: "Receipt Editor with live preview - comprehensive testing"
+    implemented: true
+    working: false
+    file: "/app/frontend/src/pages/SettingsPage.jsx"
+    stuck_count: 1
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "Live preview with font size sliders and text customization working"
+      - working: false
+        agent: "testing"
+        comment: "❌ TESTED: Receipt Editor has issues. Receipt tab not selected by default, text input fields not properly accessible for editing, font size sliders not found (0 instead of expected 5+). Toggle switches work (9 found). Live preview functionality needs investigation."
+
+  - task: "Background changer - comprehensive testing"
+    implemented: true
+    working: false
+    file: "/app/frontend/src/pages/MainPage.jsx"
+    stuck_count: 1
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "5 background color options (Papier, Weiss, Creme, Grau, Schiefer) working"
+      - working: false
+        agent: "testing"
+        comment: "❌ TESTED: Background changer button (palette icon) not found with data-testid='bg-picker-btn'. The dropdown functionality may be working but the trigger button is not accessible via the expected selector."
+
+  - task: "End-to-end receipt flow"
+    implemented: true
+    working: false
+    file: "/app/frontend/src/pages/MainPage.jsx"
+    stuck_count: 1
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "testing"
+        comment: "❌ TESTED: End-to-end flow partially working. Category selection works, but condition selection fails - 'Gebraucht' button not found. Dialog overlay issues prevent completing the full purchase flow. Modal interactions need fixing."
 
 metadata:
   created_by: "main_agent"
