@@ -72,15 +72,9 @@ function AppRoutes() {
 }
 
 function AppContent() {
-  const { background } = useBackground();
+  const { darkMode } = useBackground();
   
-  const bgClass = {
-    paper: 'paper-bg',
-    white: 'bg-white',
-    cream: 'bg-amber-50',
-    gray: 'bg-gray-100',
-    slate: 'bg-slate-50'
-  }[background] || 'paper-bg';
+  const bgClass = darkMode ? 'dark-mode' : 'light-mode';
 
   return (
     <div className={`App min-h-screen ${bgClass}`}>
