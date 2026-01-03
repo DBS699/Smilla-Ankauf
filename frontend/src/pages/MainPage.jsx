@@ -60,6 +60,7 @@ export default function MainPage() {
   const [isCheckingPrice, setIsCheckingPrice] = useState(false);
   const [customCategories, setCustomCategories] = useState([]);
   const [colors, setColors] = useState(DEFAULT_COLORS);
+  const [categoryIcons, setCategoryIcons] = useState({});
 
   useEffect(() => {
     loadTodayStats();
@@ -91,6 +92,9 @@ export default function MainPage() {
       if (settings?.colors) {
         setColors({ ...DEFAULT_COLORS, ...settings.colors });
       }
+      if (settings?.category_icons) {
+        setCategoryIcons(settings.category_icons);
+      }
     } catch (error) {
       console.error('Failed to load settings:', error);
     }
@@ -99,7 +103,11 @@ export default function MainPage() {
   // Combine default and custom categories
   const allCategories = [
     ...CATEGORIES,
-    ...customCategories.map(name => ({ id: name.toLowerCase().replace(/\s+/g, '_'), name, icon: 'Shirt' }))
+    ...customCategories.map(name => ({ 
+      id: name.toLowerCase().replace(/\s+/g, '_'), 
+      name, 
+      icon: categoryIcons[name] || 'Shirt' 
+    }))
   ];
 
   const openCategoryDialog = (category) => {
