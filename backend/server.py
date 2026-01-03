@@ -27,14 +27,32 @@ app = FastAPI()
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
 
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+# ============== Constants ==============
+CATEGORIES = [
+    "Kleider", "Strickmode/Cardigans", "Sweatshirt", "Hoodie",
+    "Hosen", "Jeans", "Jacken", "Blazer", "Mäntel",
+    "Shirts", "Top", "Hemd", "Bluse", "Röcke/Jupe",
+    "Sportbekleidung", "Bademode", "Shorts"
+]
+PRICE_LEVELS = ["Luxus", "Teuer", "Mittel", "Günstig"]
+CONDITIONS = ["Neu", "Kaum benutzt", "Gebraucht/Gut", "Abgenutzt"]
+RELEVANCE_LEVELS = ["Stark relevant", "Wichtig", "Nicht beliebt"]
+
 # ============== Models ==============
 
 class PurchaseItem(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     category: str
-    price_level: str  # Luxus, Teuer, Mittel, Günstig
-    condition: str    # Neu, Kaum benutzt, Gebraucht/Gut, Abgenutzt
-    relevance: str    # Stark relevant, Wichtig, Nicht beliebt
+    price_level: str
+    condition: str
+    relevance: str
     price: float
 
 class PurchaseItemCreate(BaseModel):
@@ -50,9 +68,6 @@ class PriceMatrixEntry(BaseModel):
     condition: str
     relevance: str
     fixed_price: Optional[float] = None
-
-class PriceMatrixUpdate(BaseModel):
-    entries: List[PriceMatrixEntry]
 
 class Purchase(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -80,24 +95,12 @@ class MonthlyStats(BaseModel):
     count: int
     total: float
 
-# ============== Routes ==============
+# ============== Basic Routes ==============
 
 @api_router.get("/")
 async def root():
     return {"message": "ReWear POS API"}
 
-# Constants
-CATEGORIES = [
-    "Kleider", "Strickmode/Cardigans", "Sweatshirt", "Hoodie",
-    "Hosen", "Jeans", "Jacken", "Blazer", "Mäntel",
-    "Shirts", "Top", "Hemd", "Bluse", "Röcke/Jupe",
-    "Sportbekleidung", "Bademode", "Shorts"
-]
-PRICE_LEVELS = ["Luxus", "Teuer", "Mittel", "Günstig"]
-CONDITIONS = ["Neu", "Kaum benutzt", "Gebraucht/Gut", "Abgenutzt"]
-RELEVANCE_LEVELS = ["Stark relevant", "Wichtig", "Nicht beliebt"]
-
-# Get all categories
 @api_router.get("/categories")
 async def get_categories():
     return {
@@ -107,171 +110,8 @@ async def get_categories():
         "relevance_levels": RELEVANCE_LEVELS
     }
 
-# Create a new purchase (Ankauf)
-@api_router.post("/purchases", response_model=PurchaseResponse)
-async def create_purchase(purchase_data: PurchaseCreate):
-    # Calculate total
-    total = sum(item.price for item in purchase_data.items)
-    
-    # Create purchase items with IDs
-    items = [
-        PurchaseItem(
-            category=item.category,
-            price_level=item.price_level,
-            condition=item.condition,
-            relevance=item.relevance,
-            price=item.price
-        )
-        for item in purchase_data.items
-    ]
-    
-    # Create purchase object
-    purchase = Purchase(items=items, total=total)
-    
-    # Prepare document for MongoDB
-    doc = {
-        "id": purchase.id,
-        "items": [item.model_dump() for item in items],
-        "total": total,
-        "timestamp": purchase.timestamp.isoformat()
-    }
-    
-    await db.purchases.insert_one(doc)
-    
-    return PurchaseResponse(
-        id=purchase.id,
-        items=items,
-        total=total,
-        timestamp=purchase.timestamp.isoformat()
-    )
-
-# Get all purchases
-@api_router.get("/purchases", response_model=List[PurchaseResponse])
-async def get_purchases(
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None
-):
-    query = {}
-    
-    if start_date or end_date:
-        query["timestamp"] = {}
-        if start_date:
-            query["timestamp"]["$gte"] = start_date
-        if end_date:
-            query["timestamp"]["$lte"] = end_date
-    
-    purchases = await db.purchases.find(query, {"_id": 0}).sort("timestamp", -1).to_list(1000)
-    return purchases
-
-# Get single purchase by ID
-@api_router.get("/purchases/{purchase_id}", response_model=PurchaseResponse)
-async def get_purchase(purchase_id: str):
-    purchase = await db.purchases.find_one({"id": purchase_id}, {"_id": 0})
-    if not purchase:
-        raise HTTPException(status_code=404, detail="Purchase not found")
-    return purchase
-
-# Delete a purchase
-@api_router.delete("/purchases/{purchase_id}")
-async def delete_purchase(purchase_id: str):
-    result = await db.purchases.delete_one({"id": purchase_id})
-    if result.deleted_count == 0:
-        raise HTTPException(status_code=404, detail="Purchase not found")
-    return {"message": "Purchase deleted"}
-
-# Get daily statistics
-@api_router.get("/stats/daily", response_model=List[DailyStats])
-async def get_daily_stats(days: int = 30):
-    # Get purchases from last N days
-    start_date = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
-    
-    purchases = await db.purchases.find(
-        {"timestamp": {"$gte": start_date}},
-        {"_id": 0}
-    ).to_list(10000)
-    
-    # Group by date
-    daily_data = {}
-    for p in purchases:
-        date_str = p["timestamp"][:10]  # YYYY-MM-DD
-        if date_str not in daily_data:
-            daily_data[date_str] = {"count": 0, "total": 0.0}
-        daily_data[date_str]["count"] += 1
-        daily_data[date_str]["total"] += p["total"]
-    
-    # Convert to list
-    result = [
-        DailyStats(date=date, count=data["count"], total=data["total"])
-        for date, data in sorted(daily_data.items(), reverse=True)
-    ]
-    
-    return result
-
-# Get monthly statistics
-@api_router.get("/stats/monthly", response_model=List[MonthlyStats])
-async def get_monthly_stats(months: int = 12):
-    # Get all purchases
-    purchases = await db.purchases.find({}, {"_id": 0}).to_list(100000)
-    
-    # Group by month
-    monthly_data = {}
-    for p in purchases:
-        month_str = p["timestamp"][:7]  # YYYY-MM
-        if month_str not in monthly_data:
-            monthly_data[month_str] = {"count": 0, "total": 0.0}
-        monthly_data[month_str]["count"] += 1
-        monthly_data[month_str]["total"] += p["total"]
-    
-    # Convert to list and limit
-    result = [
-        MonthlyStats(month=month, count=data["count"], total=data["total"])
-        for month, data in sorted(monthly_data.items(), reverse=True)
-    ][:months]
-    
-    return result
-
-# Get today's summary
-@api_router.get("/stats/today")
-async def get_today_stats():
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    
-    purchases = await db.purchases.find(
-        {"timestamp": {"$regex": f"^{today}"}},
-        {"_id": 0}
-    ).to_list(10000)
-    
-    total_purchases = len(purchases)
-    total_amount = sum(p["total"] for p in purchases)
-    total_items = sum(len(p["items"]) for p in purchases)
-    
-    return {
-        "date": today,
-        "total_purchases": total_purchases,
-        "total_amount": total_amount,
-        "total_items": total_items
-    }
-
-# Include the router in the main app
-app.include_router(api_router)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
-
 # ============== Price Matrix Routes ==============
 
-# Get fixed price for a combination
 @api_router.get("/price-matrix/lookup")
 async def lookup_fixed_price(
     category: str,
@@ -292,23 +132,14 @@ async def lookup_fixed_price(
         return {"fixed_price": entry["fixed_price"], "found": True}
     return {"fixed_price": None, "found": False}
 
-# Get all price matrix entries
-@api_router.get("/price-matrix")
-async def get_price_matrix():
-    entries = await db.price_matrix.find({}, {"_id": 0}).to_list(10000)
-    return entries
-
-# Download Excel template with all combinations
 @api_router.get("/price-matrix/download")
 async def download_price_matrix():
-    # Get existing prices from DB
     existing = await db.price_matrix.find({}, {"_id": 0}).to_list(10000)
     existing_map = {}
     for e in existing:
         key = f"{e['category']}|{e['price_level']}|{e['condition']}|{e['relevance']}"
         existing_map[key] = e.get('fixed_price')
     
-    # Generate all combinations
     rows = []
     for cat in CATEGORIES:
         for level in PRICE_LEVELS:
@@ -323,7 +154,6 @@ async def download_price_matrix():
                         "Fixpreis": existing_map.get(key, "")
                     })
     
-    # Create Excel file
     df = pd.DataFrame(rows)
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
@@ -336,19 +166,21 @@ async def download_price_matrix():
         headers={"Content-Disposition": "attachment; filename=preismatrix.xlsx"}
     )
 
-# Upload Excel with prices
+@api_router.get("/price-matrix")
+async def get_price_matrix():
+    entries = await db.price_matrix.find({}, {"_id": 0}).to_list(10000)
+    return entries
+
 @api_router.post("/price-matrix/upload")
 async def upload_price_matrix(file: UploadFile = File(...)):
     try:
         contents = await file.read()
         df = pd.read_excel(io.BytesIO(contents))
         
-        # Validate columns
         required_cols = ["Kategorie", "Preisniveau", "Zustand", "Relevanz", "Fixpreis"]
         if not all(col in df.columns for col in required_cols):
             raise HTTPException(status_code=400, detail="Excel muss Spalten: Kategorie, Preisniveau, Zustand, Relevanz, Fixpreis enthalten")
         
-        # Process entries
         updated = 0
         for _, row in df.iterrows():
             category = str(row["Kategorie"]).strip()
@@ -356,7 +188,6 @@ async def upload_price_matrix(file: UploadFile = File(...)):
             condition = str(row["Zustand"]).strip()
             relevance = str(row["Relevanz"]).strip()
             
-            # Parse price
             fixed_price = None
             price_val = row["Fixpreis"]
             if pd.notna(price_val) and str(price_val).strip() != "":
@@ -365,7 +196,6 @@ async def upload_price_matrix(file: UploadFile = File(...)):
                 except (ValueError, TypeError):
                     pass
             
-            # Validate values
             if category not in CATEGORIES:
                 continue
             if price_level not in PRICE_LEVELS:
@@ -375,7 +205,6 @@ async def upload_price_matrix(file: UploadFile = File(...)):
             if relevance not in RELEVANCE_LEVELS:
                 continue
             
-            # Upsert to database
             await db.price_matrix.update_one(
                 {
                     "category": category,
@@ -401,11 +230,153 @@ async def upload_price_matrix(file: UploadFile = File(...)):
         logger.error(f"Upload error: {e}")
         raise HTTPException(status_code=400, detail=str(e))
 
-# Clear all fixed prices
 @api_router.delete("/price-matrix")
 async def clear_price_matrix():
     result = await db.price_matrix.delete_many({})
     return {"message": f"{result.deleted_count} Einträge gelöscht"}
+
+# ============== Purchase Routes ==============
+
+@api_router.post("/purchases", response_model=PurchaseResponse)
+async def create_purchase(purchase_data: PurchaseCreate):
+    total = sum(item.price for item in purchase_data.items)
+    
+    items = [
+        PurchaseItem(
+            category=item.category,
+            price_level=item.price_level,
+            condition=item.condition,
+            relevance=item.relevance,
+            price=item.price
+        )
+        for item in purchase_data.items
+    ]
+    
+    purchase = Purchase(items=items, total=total)
+    
+    doc = {
+        "id": purchase.id,
+        "items": [item.model_dump() for item in items],
+        "total": total,
+        "timestamp": purchase.timestamp.isoformat()
+    }
+    
+    await db.purchases.insert_one(doc)
+    
+    return PurchaseResponse(
+        id=purchase.id,
+        items=items,
+        total=total,
+        timestamp=purchase.timestamp.isoformat()
+    )
+
+@api_router.get("/purchases", response_model=List[PurchaseResponse])
+async def get_purchases(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None
+):
+    query = {}
+    
+    if start_date or end_date:
+        query["timestamp"] = {}
+        if start_date:
+            query["timestamp"]["$gte"] = start_date
+        if end_date:
+            query["timestamp"]["$lte"] = end_date
+    
+    purchases = await db.purchases.find(query, {"_id": 0}).sort("timestamp", -1).to_list(1000)
+    return purchases
+
+@api_router.get("/purchases/{purchase_id}", response_model=PurchaseResponse)
+async def get_purchase(purchase_id: str):
+    purchase = await db.purchases.find_one({"id": purchase_id}, {"_id": 0})
+    if not purchase:
+        raise HTTPException(status_code=404, detail="Purchase not found")
+    return purchase
+
+@api_router.delete("/purchases/{purchase_id}")
+async def delete_purchase(purchase_id: str):
+    result = await db.purchases.delete_one({"id": purchase_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Purchase not found")
+    return {"message": "Purchase deleted"}
+
+# ============== Stats Routes ==============
+
+@api_router.get("/stats/daily", response_model=List[DailyStats])
+async def get_daily_stats(days: int = 30):
+    start_date = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+    
+    purchases = await db.purchases.find(
+        {"timestamp": {"$gte": start_date}},
+        {"_id": 0}
+    ).to_list(10000)
+    
+    daily_data = {}
+    for p in purchases:
+        date_str = p["timestamp"][:10]
+        if date_str not in daily_data:
+            daily_data[date_str] = {"count": 0, "total": 0.0}
+        daily_data[date_str]["count"] += 1
+        daily_data[date_str]["total"] += p["total"]
+    
+    result = [
+        DailyStats(date=date, count=data["count"], total=data["total"])
+        for date, data in sorted(daily_data.items(), reverse=True)
+    ]
+    
+    return result
+
+@api_router.get("/stats/monthly", response_model=List[MonthlyStats])
+async def get_monthly_stats(months: int = 12):
+    purchases = await db.purchases.find({}, {"_id": 0}).to_list(100000)
+    
+    monthly_data = {}
+    for p in purchases:
+        month_str = p["timestamp"][:7]
+        if month_str not in monthly_data:
+            monthly_data[month_str] = {"count": 0, "total": 0.0}
+        monthly_data[month_str]["count"] += 1
+        monthly_data[month_str]["total"] += p["total"]
+    
+    result = [
+        MonthlyStats(month=month, count=data["count"], total=data["total"])
+        for month, data in sorted(monthly_data.items(), reverse=True)
+    ][:months]
+    
+    return result
+
+@api_router.get("/stats/today")
+async def get_today_stats():
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    
+    purchases = await db.purchases.find(
+        {"timestamp": {"$regex": f"^{today}"}},
+        {"_id": 0}
+    ).to_list(10000)
+    
+    total_purchases = len(purchases)
+    total_amount = sum(p["total"] for p in purchases)
+    total_items = sum(len(p["items"]) for p in purchases)
+    
+    return {
+        "date": today,
+        "total_purchases": total_purchases,
+        "total_amount": total_amount,
+        "total_items": total_items
+    }
+
+# ============== App Setup ==============
+
+app.include_router(api_router)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_credentials=True,
+    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
