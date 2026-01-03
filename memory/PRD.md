@@ -32,6 +32,13 @@ Eine App für den Ankauf von Kleidung bauen, basierend auf einer Excel-Vorlage. 
 - ✅ Automatische Fixpreis-Übernahme beim Hinzufügen
 - ✅ Quick-Add bei vorhandenem Fixpreis
 
+### Phase 3 - Erweiterte Einstellungen (03.01.2026)
+- ✅ Excel Download repariert (Blob-Download statt about:blank)
+- ✅ Gefahrenzone Passwortschutz
+- ✅ Eigene Kategorien hinzufügen
+- ✅ "Unsicher? Google Lens öffnen" Button bei Preisniveau
+- ✅ Farben für Preisniveau-Buttons anpassbar (Design-Tab)
+
 ## Tech Stack
 - **Frontend**: React + Tailwind CSS + Shadcn/UI
 - **Backend**: FastAPI (Python)
