@@ -52,6 +52,14 @@ Eine App für den Ankauf von Kleidung bauen, basierend auf einer Excel-Vorlage. 
 - ✅ Eigene Kategorien werden in Excel-Preismatrix inkludiert
 - ✅ Alle Ankauf-Daten als Excel exportieren (Historie-Seite)
 
+### Phase 6 - Kategorien-Verwaltung & Preis-Slider (03.01.2026)
+- ✅ Standard-Kategorien einzeln ausblenden (Toggle/Switch pro Kategorie)
+- ✅ "Alle ausblenden" Button für alle 17 Standard-Kategorien
+- ✅ "Alle wiederherstellen" Button zeigt alle wieder an
+- ✅ Preis-Slider (0-100 CHF in 0.50 Schritten) statt Tippen
+- ✅ +/- Buttons für Feinanpassung (±1 CHF, ±0.50 CHF)
+- ✅ Mehr Schnellwahl-Buttons (1,2,3,5,8,10,15,20,25,30,40,50)
+
 ## Tech Stack
 - **Frontend**: React + Tailwind CSS + Shadcn/UI
 - **Backend**: FastAPI (Python)
