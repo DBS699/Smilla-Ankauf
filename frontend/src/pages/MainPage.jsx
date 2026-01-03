@@ -635,37 +635,88 @@ export default function MainPage() {
                             Sofort hinzufügen
                           </Button>
                           <p className="text-xs text-amber-700 mt-3">
-                            Oder anderen Preis eingeben:
+                            Oder anderen Preis wählen:
                           </p>
                         </div>
                       ) : (
-                        <p className="text-sm text-muted-foreground mb-2">
-                          Kein Fixpreis hinterlegt - Preis eingeben:
+                        <p className="text-sm text-muted-foreground mb-4">
+                          Preis mit Slider oder Buttons wählen:
                         </p>
                       )}
                       
-                      <div className="flex items-center justify-center gap-2">
-                        <span className="text-2xl text-muted-foreground">CHF</span>
-                        <input
-                          type="number"
-                          className="price-input max-w-[200px]"
-                          placeholder="0.00"
-                          value={price}
-                          onChange={(e) => setPrice(e.target.value)}
-                          autoFocus={fixedPrice === null}
-                          min="0"
-                          step="0.50"
-                          data-testid="price-input"
+                      {/* Price Display */}
+                      <div className="font-display text-5xl font-bold mb-6" data-testid="price-display">
+                        CHF {(parseFloat(price) || 0).toFixed(2)}
+                      </div>
+                      
+                      {/* Price Slider */}
+                      <div className="px-4 mb-6">
+                        <Slider
+                          value={[parseFloat(price) || 0]}
+                          onValueChange={(val) => setPrice(val[0].toString())}
+                          min={0}
+                          max={100}
+                          step={0.5}
+                          className="w-full"
+                          data-testid="price-slider"
                         />
+                        <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                          <span>0</span>
+                          <span>25</span>
+                          <span>50</span>
+                          <span>75</span>
+                          <span>100</span>
+                        </div>
+                      </div>
+                      
+                      {/* Fine adjustment buttons */}
+                      <div className="flex items-center justify-center gap-4 mb-4">
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-14 w-14 rounded-full"
+                          onClick={() => setPrice(Math.max(0, (parseFloat(price) || 0) - 1).toString())}
+                          data-testid="price-minus-1"
+                        >
+                          <Minus className="w-6 h-6" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-10"
+                          onClick={() => setPrice(Math.max(0, (parseFloat(price) || 0) - 0.5).toString())}
+                          data-testid="price-minus-half"
+                        >
+                          -0.50
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-10"
+                          onClick={() => setPrice(((parseFloat(price) || 0) + 0.5).toString())}
+                          data-testid="price-plus-half"
+                        >
+                          +0.50
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-14 w-14 rounded-full"
+                          onClick={() => setPrice(((parseFloat(price) || 0) + 1).toString())}
+                          data-testid="price-plus-1"
+                        >
+                          <Plus className="w-6 h-6" />
+                        </Button>
                       </div>
                     </div>
 
+                    {/* Quick price buttons */}
                     <div className="grid grid-cols-4 gap-2">
-                      {[1, 2, 3, 5, 8, 10, 15, 20].map((val) => (
+                      {[1, 2, 3, 5, 8, 10, 15, 20, 25, 30, 40, 50].map((val) => (
                         <Button
                           key={val}
-                          variant="outline"
-                          className="h-12 font-display font-bold"
+                          variant={parseFloat(price) === val ? "default" : "outline"}
+                          className="h-11 font-display font-bold"
                           onClick={() => setPrice(val.toString())}
                           data-testid={`quick-price-${val}`}
                         >
@@ -674,7 +725,7 @@ export default function MainPage() {
                       ))}
                     </div>
 
-                    <div className="flex gap-3">
+                    <div className="flex gap-3 pt-2">
                       <Button 
                         variant="outline" 
                         className="flex-1 h-12"
