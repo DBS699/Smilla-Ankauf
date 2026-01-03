@@ -2,11 +2,41 @@ import "@/App.css";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { useState, useEffect, createContext, useContext } from "react";
 import MainPage from "@/pages/MainPage";
 import HistoryPage from "@/pages/HistoryPage";
 import ReceiptPage from "@/pages/ReceiptPage";
 import SettingsPage from "@/pages/SettingsPage";
 import LoginPage from "@/pages/LoginPage";
+import api from "@/lib/api";
+
+// Background Context
+const BackgroundContext = createContext({ background: 'paper', setBackground: () => {} });
+export const useBackground = () => useContext(BackgroundContext);
+
+function BackgroundProvider({ children }) {
+  const [background, setBackground] = useState('paper');
+
+  useEffect(() => {
+    const loadBackground = async () => {
+      try {
+        const settings = await api.getSettings();
+        if (settings?.background) {
+          setBackground(settings.background);
+        }
+      } catch (e) {
+        // Ignore - use default
+      }
+    };
+    loadBackground();
+  }, []);
+
+  return (
+    <BackgroundContext.Provider value={{ background, setBackground }}>
+      {children}
+    </BackgroundContext.Provider>
+  );
+}
 
 // Protected Route wrapper
 function ProtectedRoute({ children }) {
@@ -41,16 +71,34 @@ function AppRoutes() {
   );
 }
 
+function AppContent() {
+  const { background } = useBackground();
+  
+  const bgClass = {
+    paper: 'paper-bg',
+    white: 'bg-white',
+    cream: 'bg-amber-50',
+    gray: 'bg-gray-100',
+    slate: 'bg-slate-50'
+  }[background] || 'paper-bg';
+
+  return (
+    <div className={`App min-h-screen ${bgClass}`}>
+      <BrowserRouter>
+        <AppRoutes />
+      </BrowserRouter>
+      <Toaster position="top-center" richColors />
+    </div>
+  );
+}
+
 function App() {
   return (
-    <div className="App paper-bg min-h-screen">
-      <AuthProvider>
-        <BrowserRouter>
-          <AppRoutes />
-        </BrowserRouter>
-        <Toaster position="top-center" richColors />
-      </AuthProvider>
-    </div>
+    <AuthProvider>
+      <BackgroundProvider>
+        <AppContent />
+      </BackgroundProvider>
+    </AuthProvider>
   );
 }
 
