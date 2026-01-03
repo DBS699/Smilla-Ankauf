@@ -366,6 +366,32 @@ async def get_today_stats():
         "total_items": total_items
     }
 
+# ============== Auth Routes ==============
+
+USERS = {
+    "admin": {"password": "1234", "role": "admin"},
+    "smilla": {"password": "1234", "role": "mitarbeiter"}
+}
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+class UserResponse(BaseModel):
+    username: str
+    role: str
+
+@api_router.post("/auth/login")
+async def login(data: LoginRequest):
+    user = USERS.get(data.username.lower())
+    if not user or user["password"] != data.password:
+        raise HTTPException(status_code=401, detail="Falscher Benutzername oder Passwort")
+    return {"username": data.username.lower(), "role": user["role"]}
+
+@api_router.get("/auth/users")
+async def get_users():
+    return [{"username": k, "role": v["role"]} for k, v in USERS.items()]
+
 # ============== Custom Categories Routes ==============
 
 @api_router.get("/custom-categories")
