@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Calendar, TrendingUp, Package, Eye, Trash2, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Calendar, TrendingUp, Package, Eye, Trash2, ChevronDown, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -18,6 +18,7 @@ export default function HistoryPage() {
   const [todayStats, setTodayStats] = useState({});
   const [loading, setLoading] = useState(true);
   const [expandedPurchase, setExpandedPurchase] = useState(null);
+  const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -54,6 +55,18 @@ export default function HistoryPage() {
     }
   };
 
+  const handleExportExcel = async () => {
+    setIsExporting(true);
+    try {
+      await api.exportPurchasesExcel();
+      toast.success('Ankäufe exportiert');
+    } catch (error) {
+      toast.error('Fehler beim Export');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const formatDate = (dateStr) => {
     const date = new Date(dateStr);
     return date.toLocaleDateString('de-CH', {
@@ -84,17 +97,28 @@ export default function HistoryPage() {
     <div className="min-h-screen" data-testid="history-page">
       {/* Header */}
       <header className="bg-white border-b sticky top-0 z-40">
-        <div className="container mx-auto px-4 py-3 flex items-center gap-4">
-          <Link to="/">
-            <Button variant="ghost" size="sm" data-testid="back-to-main">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Zurück
-            </Button>
-          </Link>
-          <div>
-            <h1 className="text-xl font-bold text-primary">Ankaufs-Historie</h1>
-            <p className="text-sm text-muted-foreground">Übersicht aller Ankäufe</p>
+        <div className="container mx-auto px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Link to="/">
+              <Button variant="ghost" size="sm" data-testid="back-to-main">
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Zurück
+              </Button>
+            </Link>
+            <div>
+              <h1 className="text-xl font-bold text-primary">Ankaufs-Historie</h1>
+              <p className="text-sm text-muted-foreground">Übersicht aller Ankäufe</p>
+            </div>
           </div>
+          <Button 
+            variant="outline" 
+            onClick={handleExportExcel}
+            disabled={isExporting}
+            data-testid="export-excel-btn"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            {isExporting ? 'Exportiert...' : 'Als Excel exportieren'}
+          </Button>
         </div>
       </header>
 
