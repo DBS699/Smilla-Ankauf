@@ -140,8 +140,15 @@ async def download_price_matrix():
         key = f"{e['category']}|{e['price_level']}|{e['condition']}|{e['relevance']}"
         existing_map[key] = e.get('fixed_price')
     
+    # Get custom categories
+    custom_cats = await db.custom_categories.find({}, {"_id": 0}).to_list(100)
+    custom_cat_names = [c["name"] for c in custom_cats]
+    
+    # Combine all categories
+    all_categories = CATEGORIES + custom_cat_names
+    
     rows = []
-    for cat in CATEGORIES:
+    for cat in all_categories:
         for level in PRICE_LEVELS:
             for cond in CONDITIONS:
                 for rel in RELEVANCE_LEVELS:
