@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Calendar, TrendingUp, Package, Eye, Trash2, ChevronDown, Download } from 'lucide-react';
+import { ArrowLeft, Calendar, TrendingUp, Package, Eye, Trash2, ChevronDown, Download, Filter, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -8,6 +8,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import api from '@/lib/api';
 
@@ -19,6 +22,9 @@ export default function HistoryPage() {
   const [loading, setLoading] = useState(true);
   const [expandedPurchase, setExpandedPurchase] = useState(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [exportStartDate, setExportStartDate] = useState('');
+  const [exportEndDate, setExportEndDate] = useState('');
+  const [showExportFilter, setShowExportFilter] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -55,16 +61,29 @@ export default function HistoryPage() {
     }
   };
 
-  const handleExportExcel = async () => {
+  const handleExportExcel = async (withFilter = false) => {
     setIsExporting(true);
     try {
-      await api.exportPurchasesExcel();
-      toast.success('Ankäufe exportiert');
+      const startDate = withFilter && exportStartDate ? exportStartDate : null;
+      const endDate = withFilter && exportEndDate ? exportEndDate : null;
+      await api.exportPurchasesExcel(startDate, endDate);
+      
+      if (withFilter && (startDate || endDate)) {
+        toast.success(`Export erstellt (${startDate || 'Anfang'} bis ${endDate || 'Ende'})`);
+      } else {
+        toast.success('Alle Ankäufe exportiert');
+      }
+      setShowExportFilter(false);
     } catch (error) {
       toast.error('Fehler beim Export');
     } finally {
       setIsExporting(false);
     }
+  };
+
+  const clearExportFilter = () => {
+    setExportStartDate('');
+    setExportEndDate('');
   };
 
   const formatDate = (dateStr) => {
@@ -110,15 +129,75 @@ export default function HistoryPage() {
               <p className="text-sm text-muted-foreground">Übersicht aller Ankäufe</p>
             </div>
           </div>
-          <Button 
-            variant="outline" 
-            onClick={handleExportExcel}
-            disabled={isExporting}
-            data-testid="export-excel-btn"
-          >
-            <Download className="w-4 h-4 mr-2" />
-            {isExporting ? 'Exportiert...' : 'Als Excel exportieren'}
-          </Button>
+          <Popover open={showExportFilter} onOpenChange={setShowExportFilter}>
+            <PopoverTrigger asChild>
+              <Button 
+                variant="outline" 
+                disabled={isExporting}
+                data-testid="export-excel-btn"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                <span className="hidden sm:inline">{isExporting ? 'Exportiert...' : 'Excel Export'}</span>
+                <span className="sm:hidden">{isExporting ? '...' : 'Export'}</span>
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80" align="end">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-medium flex items-center gap-2">
+                    <Filter className="w-4 h-4" />
+                    Export-Filter
+                  </h4>
+                  {(exportStartDate || exportEndDate) && (
+                    <Button variant="ghost" size="sm" onClick={clearExportFilter}>
+                      <X className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
+                
+                <div className="grid gap-3">
+                  <div>
+                    <Label htmlFor="export-start">Von Datum</Label>
+                    <Input 
+                      id="export-start"
+                      type="date" 
+                      value={exportStartDate}
+                      onChange={(e) => setExportStartDate(e.target.value)}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="export-end">Bis Datum</Label>
+                    <Input 
+                      id="export-end"
+                      type="date" 
+                      value={exportEndDate}
+                      onChange={(e) => setExportEndDate(e.target.value)}
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    className="flex-1"
+                    onClick={() => handleExportExcel(false)}
+                    disabled={isExporting}
+                  >
+                    Alle
+                  </Button>
+                  <Button 
+                    className="flex-1"
+                    onClick={() => handleExportExcel(true)}
+                    disabled={isExporting || (!exportStartDate && !exportEndDate)}
+                  >
+                    Gefiltert
+                  </Button>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
       </header>
 
