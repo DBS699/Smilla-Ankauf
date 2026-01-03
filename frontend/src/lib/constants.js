@@ -35,6 +35,13 @@ export const CONDITIONS = [
   { id: 'abgenutzt', name: 'Abgenutzt', color: 'bg-red-100 text-red-800 border-red-300' },
 ];
 
+// Relevance levels
+export const RELEVANCE_LEVELS = [
+  { id: 'stark_relevant', name: 'Stark relevant', color: 'bg-violet-100 text-violet-800 border-violet-300', description: 'Hohe Nachfrage' },
+  { id: 'wichtig', name: 'Wichtig', color: 'bg-cyan-100 text-cyan-800 border-cyan-300', description: 'Gute Nachfrage' },
+  { id: 'nicht_beliebt', name: 'Nicht beliebt', color: 'bg-gray-100 text-gray-800 border-gray-300', description: 'Geringe Nachfrage' },
+];
+
 // Store info for receipts
 export const STORE_INFO = {
   name: 'Smillå-Store GmbH',

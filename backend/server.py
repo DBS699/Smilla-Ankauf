@@ -1,4 +1,5 @@
-from fastapi import FastAPI, APIRouter, HTTPException
+from fastapi import FastAPI, APIRouter, HTTPException, UploadFile, File
+from fastapi.responses import StreamingResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -9,6 +10,8 @@ from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Optional
 import uuid
 from datetime import datetime, timezone, timedelta
+import io
+import pandas as pd
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -31,13 +34,25 @@ class PurchaseItem(BaseModel):
     category: str
     price_level: str  # Luxus, Teuer, Mittel, Günstig
     condition: str    # Neu, Kaum benutzt, Gebraucht/Gut, Abgenutzt
+    relevance: str    # Stark relevant, Wichtig, Nicht beliebt
     price: float
 
 class PurchaseItemCreate(BaseModel):
     category: str
     price_level: str
     condition: str
+    relevance: str
     price: float
+
+class PriceMatrixEntry(BaseModel):
+    category: str
+    price_level: str
+    condition: str
+    relevance: str
+    fixed_price: Optional[float] = None
+
+class PriceMatrixUpdate(BaseModel):
+    entries: List[PriceMatrixEntry]
 
 class Purchase(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -71,18 +86,25 @@ class MonthlyStats(BaseModel):
 async def root():
     return {"message": "ReWear POS API"}
 
+# Constants
+CATEGORIES = [
+    "Kleider", "Strickmode/Cardigans", "Sweatshirt", "Hoodie",
+    "Hosen", "Jeans", "Jacken", "Blazer", "Mäntel",
+    "Shirts", "Top", "Hemd", "Bluse", "Röcke/Jupe",
+    "Sportbekleidung", "Bademode", "Shorts"
+]
+PRICE_LEVELS = ["Luxus", "Teuer", "Mittel", "Günstig"]
+CONDITIONS = ["Neu", "Kaum benutzt", "Gebraucht/Gut", "Abgenutzt"]
+RELEVANCE_LEVELS = ["Stark relevant", "Wichtig", "Nicht beliebt"]
+
 # Get all categories
 @api_router.get("/categories")
 async def get_categories():
     return {
-        "categories": [
-            "Kleider", "Strickmode/Cardigans", "Sweatshirt", "Hoodie",
-            "Hosen", "Jeans", "Jacken", "Blazer", "Mäntel",
-            "Shirts", "Top", "Hemd", "Bluse", "Röcke/Jupe",
-            "Sportbekleidung", "Bademode", "Shorts"
-        ],
-        "price_levels": ["Luxus", "Teuer", "Mittel", "Günstig"],
-        "conditions": ["Neu", "Kaum benutzt", "Gebraucht/Gut", "Abgenutzt"]
+        "categories": CATEGORIES,
+        "price_levels": PRICE_LEVELS,
+        "conditions": CONDITIONS,
+        "relevance_levels": RELEVANCE_LEVELS
     }
 
 # Create a new purchase (Ankauf)
@@ -97,6 +119,7 @@ async def create_purchase(purchase_data: PurchaseCreate):
             category=item.category,
             price_level=item.price_level,
             condition=item.condition,
+            relevance=item.relevance,
             price=item.price
         )
         for item in purchase_data.items
@@ -245,6 +268,144 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+# ============== Price Matrix Routes ==============
+
+# Get fixed price for a combination
+@api_router.get("/price-matrix/lookup")
+async def lookup_fixed_price(
+    category: str,
+    price_level: str,
+    condition: str,
+    relevance: str
+):
+    entry = await db.price_matrix.find_one(
+        {
+            "category": category,
+            "price_level": price_level,
+            "condition": condition,
+            "relevance": relevance
+        },
+        {"_id": 0}
+    )
+    if entry and entry.get("fixed_price") is not None:
+        return {"fixed_price": entry["fixed_price"], "found": True}
+    return {"fixed_price": None, "found": False}
+
+# Get all price matrix entries
+@api_router.get("/price-matrix")
+async def get_price_matrix():
+    entries = await db.price_matrix.find({}, {"_id": 0}).to_list(10000)
+    return entries
+
+# Download Excel template with all combinations
+@api_router.get("/price-matrix/download")
+async def download_price_matrix():
+    # Get existing prices from DB
+    existing = await db.price_matrix.find({}, {"_id": 0}).to_list(10000)
+    existing_map = {}
+    for e in existing:
+        key = f"{e['category']}|{e['price_level']}|{e['condition']}|{e['relevance']}"
+        existing_map[key] = e.get('fixed_price')
+    
+    # Generate all combinations
+    rows = []
+    for cat in CATEGORIES:
+        for level in PRICE_LEVELS:
+            for cond in CONDITIONS:
+                for rel in RELEVANCE_LEVELS:
+                    key = f"{cat}|{level}|{cond}|{rel}"
+                    rows.append({
+                        "Kategorie": cat,
+                        "Preisniveau": level,
+                        "Zustand": cond,
+                        "Relevanz": rel,
+                        "Fixpreis": existing_map.get(key, "")
+                    })
+    
+    # Create Excel file
+    df = pd.DataFrame(rows)
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Preismatrix')
+    output.seek(0)
+    
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=preismatrix.xlsx"}
+    )
+
+# Upload Excel with prices
+@api_router.post("/price-matrix/upload")
+async def upload_price_matrix(file: UploadFile = File(...)):
+    try:
+        contents = await file.read()
+        df = pd.read_excel(io.BytesIO(contents))
+        
+        # Validate columns
+        required_cols = ["Kategorie", "Preisniveau", "Zustand", "Relevanz", "Fixpreis"]
+        if not all(col in df.columns for col in required_cols):
+            raise HTTPException(status_code=400, detail="Excel muss Spalten: Kategorie, Preisniveau, Zustand, Relevanz, Fixpreis enthalten")
+        
+        # Process entries
+        updated = 0
+        for _, row in df.iterrows():
+            category = str(row["Kategorie"]).strip()
+            price_level = str(row["Preisniveau"]).strip()
+            condition = str(row["Zustand"]).strip()
+            relevance = str(row["Relevanz"]).strip()
+            
+            # Parse price
+            fixed_price = None
+            price_val = row["Fixpreis"]
+            if pd.notna(price_val) and str(price_val).strip() != "":
+                try:
+                    fixed_price = float(price_val)
+                except (ValueError, TypeError):
+                    pass
+            
+            # Validate values
+            if category not in CATEGORIES:
+                continue
+            if price_level not in PRICE_LEVELS:
+                continue
+            if condition not in CONDITIONS:
+                continue
+            if relevance not in RELEVANCE_LEVELS:
+                continue
+            
+            # Upsert to database
+            await db.price_matrix.update_one(
+                {
+                    "category": category,
+                    "price_level": price_level,
+                    "condition": condition,
+                    "relevance": relevance
+                },
+                {
+                    "$set": {
+                        "category": category,
+                        "price_level": price_level,
+                        "condition": condition,
+                        "relevance": relevance,
+                        "fixed_price": fixed_price
+                    }
+                },
+                upsert=True
+            )
+            updated += 1
+        
+        return {"message": f"{updated} Einträge aktualisiert", "updated": updated}
+    except Exception as e:
+        logger.error(f"Upload error: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+
+# Clear all fixed prices
+@api_router.delete("/price-matrix")
+async def clear_price_matrix():
+    result = await db.price_matrix.delete_many({})
+    return {"message": f"{result.deleted_count} Einträge gelöscht"}
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
