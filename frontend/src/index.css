@@ -185,6 +185,30 @@ code {
     animation: slideUp 0.2s ease-out;
 }
 
+/* Vertical slider styling */
+[data-orientation="vertical"] {
+    height: 100%;
+    width: 20px;
+}
+
+[data-orientation="vertical"] [role="slider"] {
+    height: 24px;
+    width: 24px;
+}
+
+/* Button text overflow fix - ensure buttons fit their content */
+.level-btn,
+.condition-btn {
+    white-space: nowrap;
+    min-width: fit-content;
+}
+
+/* Ensure grid buttons have consistent width */
+.grid-btn-equal {
+    min-width: 0;
+    width: 100%;
+}
+
 /* ======================= */
 /* RESPONSIVE IMPROVEMENTS */
 /* ======================= */
