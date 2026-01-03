@@ -111,6 +111,12 @@ export const api = {
     return response.data;
   },
 
+  // Auth
+  login: async (username, password) => {
+    const response = await apiClient.post('/auth/login', { username, password });
+    return response.data;
+  },
+
   // Custom categories
   getCustomCategories: async () => {
     const response = await apiClient.get('/custom-categories');
