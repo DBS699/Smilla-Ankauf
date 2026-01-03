@@ -162,6 +162,17 @@ export const api = {
   updateSettings: async (settings) => {
     const response = await apiClient.put('/settings', settings);
     return response.data;
+  },
+
+  // Receipt settings
+  getReceiptSettings: async () => {
+    const response = await apiClient.get('/settings/receipt');
+    return response.data;
+  },
+
+  updateReceiptSettings: async (receiptSettings) => {
+    const response = await apiClient.put('/settings/receipt', receiptSettings);
+    return response.data;
   }
 };
 
