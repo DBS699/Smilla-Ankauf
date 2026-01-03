@@ -123,14 +123,34 @@ export const api = {
     return response.data;
   },
 
-  addCustomCategory: async (name) => {
-    const response = await apiClient.post('/custom-categories', { name });
+  addCustomCategory: async (name, image = null) => {
+    const response = await apiClient.post('/custom-categories', { name, image });
+    return response.data;
+  },
+
+  updateCategoryImage: async (name, image) => {
+    const response = await apiClient.put(`/custom-categories/${encodeURIComponent(name)}/image`, { image });
     return response.data;
   },
 
   deleteCustomCategory: async (name) => {
     const response = await apiClient.delete(`/custom-categories/${encodeURIComponent(name)}`);
     return response.data;
+  },
+
+  // Export purchases
+  exportPurchasesExcel: async () => {
+    const response = await axios.get(`${API}/purchases/export/excel`, {
+      responseType: 'blob'
+    });
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', 'ankaufe_export.xlsx');
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
   },
 
   // Settings
