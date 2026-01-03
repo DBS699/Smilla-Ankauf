@@ -1,17 +1,19 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { 
   Shirt, Layers, Ruler, Briefcase, Scissors, 
   Dumbbell, Waves, ShoppingBag, Trash2, History, 
-  Plus, X, Check, Settings, Zap, HelpCircle, ExternalLink
+  Plus, X, Check, Settings, Zap, HelpCircle, ExternalLink, LogOut, User
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { CATEGORIES, PRICE_LEVELS, CONDITIONS, RELEVANCE_LEVELS } from '@/lib/constants';
+import { useAuth } from '@/contexts/AuthContext';
 import api from '@/lib/api';
 
 // Icon mapping
@@ -32,6 +34,8 @@ const DEFAULT_COLORS = {
 };
 
 export default function MainPage() {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [cart, setCart] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [dialogStep, setDialogStep] = useState(1);
@@ -144,6 +148,12 @@ export default function MainPage() {
       setIsCheckingPrice(false);
       setDialogStep(4);
     }
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+    toast.success('Abgemeldet');
   };
 
   const handleOpenGoogleLens = () => {
