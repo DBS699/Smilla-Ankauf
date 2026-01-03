@@ -506,7 +506,9 @@ async def get_settings():
                 "teuer": "#DBEAFE",
                 "mittel": "#D1FAE5",
                 "guenstig": "#F1F5F9"
-            }
+            },
+            "hidden_categories": [],
+            "category_icons": {}
         }
     return settings
 
