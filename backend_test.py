@@ -241,6 +241,9 @@ def main():
     tests = [
         tester.test_root_endpoint,
         tester.test_get_categories,
+        tester.test_price_matrix_lookup,
+        tester.test_price_matrix_download,
+        tester.test_price_matrix_get,
         tester.test_today_stats,
         tester.test_daily_stats,
         tester.test_monthly_stats,
