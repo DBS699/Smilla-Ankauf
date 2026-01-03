@@ -590,7 +590,7 @@ export default function MainPage() {
                     <Button
                       key={condition.id}
                       variant="outline"
-                      className="h-16 border-2 font-medium"
+                      className="h-16 border-2 font-medium text-sm px-2 whitespace-normal leading-tight"
                       style={{ backgroundColor: getColor(condition.id), borderColor: getColor(condition.id) }}
                       onClick={() => handleConditionSelect(condition)}
                       data-testid={`condition-${condition.id}`}
