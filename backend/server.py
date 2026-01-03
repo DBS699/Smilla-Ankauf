@@ -397,11 +397,13 @@ async def get_users():
 @api_router.get("/custom-categories")
 async def get_custom_categories():
     categories = await db.custom_categories.find({}, {"_id": 0}).to_list(100)
-    return [c["name"] for c in categories]
+    return categories  # Return full objects with name and image
 
 @api_router.post("/custom-categories")
 async def add_custom_category(data: dict):
     name = data.get("name", "").strip()
+    image = data.get("image", None)  # Base64 image data
+    
     if not name:
         raise HTTPException(status_code=400, detail="Name erforderlich")
     if name in CATEGORIES:
@@ -411,8 +413,19 @@ async def add_custom_category(data: dict):
     if existing:
         raise HTTPException(status_code=400, detail="Kategorie existiert bereits")
     
-    await db.custom_categories.insert_one({"name": name})
+    await db.custom_categories.insert_one({"name": name, "image": image})
     return {"message": f"Kategorie '{name}' hinzugefügt"}
+
+@api_router.put("/custom-categories/{name}/image")
+async def update_category_image(name: str, data: dict):
+    image = data.get("image", None)
+    result = await db.custom_categories.update_one(
+        {"name": name},
+        {"$set": {"image": image}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Kategorie nicht gefunden")
+    return {"message": "Bild aktualisiert"}
 
 @api_router.delete("/custom-categories/{name}")
 async def delete_custom_category(name: str):
