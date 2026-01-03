@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { 
   Shirt, Layers, Ruler, Briefcase, Scissors, 
   Dumbbell, Waves, ShoppingBag, Trash2, History, 
-  Plus, X, Check, Printer
+  Plus, X, Check, Settings, Zap
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { toast } from 'sonner';
-import { CATEGORIES, PRICE_LEVELS, CONDITIONS } from '@/lib/constants';
+import { CATEGORIES, PRICE_LEVELS, CONDITIONS, RELEVANCE_LEVELS } from '@/lib/constants';
 import api from '@/lib/api';
 
 // Icon mapping
@@ -29,10 +29,13 @@ export default function MainPage() {
   const [dialogStep, setDialogStep] = useState(1);
   const [selectedLevel, setSelectedLevel] = useState(null);
   const [selectedCondition, setSelectedCondition] = useState(null);
+  const [selectedRelevance, setSelectedRelevance] = useState(null);
   const [price, setPrice] = useState('');
+  const [fixedPrice, setFixedPrice] = useState(null);
   const [todayStats, setTodayStats] = useState({ total_purchases: 0, total_amount: 0, total_items: 0 });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
+  const [isCheckingPrice, setIsCheckingPrice] = useState(false);
 
   useEffect(() => {
     loadTodayStats();
@@ -52,7 +55,9 @@ export default function MainPage() {
     setDialogStep(1);
     setSelectedLevel(null);
     setSelectedCondition(null);
+    setSelectedRelevance(null);
     setPrice('');
+    setFixedPrice(null);
   };
 
   const closeDialog = () => {
@@ -60,7 +65,9 @@ export default function MainPage() {
     setDialogStep(1);
     setSelectedLevel(null);
     setSelectedCondition(null);
+    setSelectedRelevance(null);
     setPrice('');
+    setFixedPrice(null);
   };
 
   const handleLevelSelect = (level) => {
@@ -71,6 +78,35 @@ export default function MainPage() {
   const handleConditionSelect = (condition) => {
     setSelectedCondition(condition);
     setDialogStep(3);
+  };
+
+  const handleRelevanceSelect = async (relevance) => {
+    setSelectedRelevance(relevance);
+    setIsCheckingPrice(true);
+    
+    try {
+      // Check if there's a fixed price for this combination
+      const result = await api.lookupFixedPrice(
+        selectedCategory.name,
+        selectedLevel.name,
+        selectedCondition.name,
+        relevance.name
+      );
+      
+      if (result.found && result.fixed_price !== null) {
+        setFixedPrice(result.fixed_price);
+        setPrice(result.fixed_price.toString());
+      } else {
+        setFixedPrice(null);
+        setPrice('');
+      }
+    } catch (error) {
+      console.error('Failed to lookup price:', error);
+      setFixedPrice(null);
+    } finally {
+      setIsCheckingPrice(false);
+      setDialogStep(4);
+    }
   };
 
   const handleAddToCart = () => {
@@ -85,11 +121,32 @@ export default function MainPage() {
       category: selectedCategory.name,
       price_level: selectedLevel.name,
       condition: selectedCondition.name,
+      relevance: selectedRelevance.name,
       price: priceValue,
+      isFixedPrice: fixedPrice !== null
     };
 
     setCart([...cart, newItem]);
     toast.success(`${selectedCategory.name} hinzugefügt`);
+    closeDialog();
+  };
+
+  // Quick add when fixed price exists
+  const handleQuickAdd = () => {
+    if (fixedPrice === null) return;
+    
+    const newItem = {
+      id: Date.now().toString(),
+      category: selectedCategory.name,
+      price_level: selectedLevel.name,
+      condition: selectedCondition.name,
+      relevance: selectedRelevance.name,
+      price: fixedPrice,
+      isFixedPrice: true
+    };
+
+    setCart([...cart, newItem]);
+    toast.success(`${selectedCategory.name} hinzugefügt (Fixpreis)`);
     closeDialog();
   };
 
@@ -115,6 +172,7 @@ export default function MainPage() {
         category: item.category,
         price_level: item.price_level,
         condition: item.condition,
+        relevance: item.relevance,
         price: item.price,
       }));
 
@@ -124,7 +182,7 @@ export default function MainPage() {
       loadTodayStats();
       setIsMobileCartOpen(false);
       
-      // Open receipt in new tab with slight delay to ensure purchase is saved
+      // Open receipt in new tab with slight delay
       setTimeout(() => {
         window.open(`/receipt/${purchase.id}`, '_blank');
       }, 100);
@@ -173,9 +231,17 @@ export default function MainPage() {
                 data-testid={`cart-item-${index}`}
               >
                 <div className="flex-1">
-                  <p className="font-medium text-sm">{item.category}</p>
+                  <p className="font-medium text-sm flex items-center gap-1">
+                    {item.category}
+                    {item.isFixedPrice && (
+                      <Zap className="w-3 h-3 text-amber-500" title="Fixpreis" />
+                    )}
+                  </p>
                   <p className="text-xs text-muted-foreground">
                     {item.price_level} • {item.condition}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {item.relevance}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -250,6 +316,13 @@ export default function MainPage() {
                 </p>
               </div>
             </div>
+
+            <Link to="/settings">
+              <Button variant="outline" size="sm" data-testid="settings-link">
+                <Settings className="w-4 h-4 mr-2" />
+                Preise
+              </Button>
+            </Link>
 
             <Link to="/history">
               <Button variant="outline" size="sm" data-testid="history-link">
@@ -380,61 +453,125 @@ export default function MainPage() {
               </div>
             )}
 
-            {/* Step 3: Price */}
+            {/* Step 3: Relevance */}
             {dialogStep === 3 && (
+              <div className="space-y-3 animate-slide-up">
+                <p className="text-sm text-muted-foreground mb-4">Relevanz wählen</p>
+                {RELEVANCE_LEVELS.map((relevance) => (
+                  <Button
+                    key={relevance.id}
+                    variant="outline"
+                    className={`w-full h-14 justify-start text-left level-btn ${relevance.color}`}
+                    onClick={() => handleRelevanceSelect(relevance)}
+                    data-testid={`relevance-${relevance.id}`}
+                  >
+                    <div>
+                      <p className="font-semibold">{relevance.name}</p>
+                      <p className="text-xs opacity-70">{relevance.description}</p>
+                    </div>
+                  </Button>
+                ))}
+                <Button 
+                  variant="ghost" 
+                  className="w-full mt-4"
+                  onClick={() => setDialogStep(2)}
+                >
+                  Zurück
+                </Button>
+              </div>
+            )}
+
+            {/* Step 4: Price */}
+            {dialogStep === 4 && (
               <div className="space-y-6 animate-slide-up">
-                <div className="text-center">
-                  <p className="text-sm text-muted-foreground mb-2">
-                    {selectedLevel?.name} • {selectedCondition?.name}
-                  </p>
-                  <div className="flex items-center justify-center gap-2">
-                    <span className="text-2xl text-muted-foreground">CHF</span>
-                    <input
-                      type="number"
-                      className="price-input max-w-[200px]"
-                      placeholder="0.00"
-                      value={price}
-                      onChange={(e) => setPrice(e.target.value)}
-                      autoFocus
-                      min="0"
-                      step="0.50"
-                      data-testid="price-input"
-                    />
+                {isCheckingPrice ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    Preis wird gesucht...
                   </div>
-                </div>
+                ) : (
+                  <>
+                    <div className="text-center">
+                      <p className="text-sm text-muted-foreground mb-2">
+                        {selectedLevel?.name} • {selectedCondition?.name} • {selectedRelevance?.name}
+                      </p>
+                      
+                      {fixedPrice !== null ? (
+                        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
+                          <p className="text-sm text-amber-800 mb-2 flex items-center justify-center gap-1">
+                            <Zap className="w-4 h-4" />
+                            Fixpreis gefunden
+                          </p>
+                          <p className="font-display text-4xl font-bold text-amber-900">
+                            CHF {fixedPrice.toFixed(2)}
+                          </p>
+                          <Button 
+                            className="mt-4 w-full h-12 bg-amber-600 hover:bg-amber-700"
+                            onClick={handleQuickAdd}
+                            data-testid="quick-add-btn"
+                          >
+                            <Zap className="w-4 h-4 mr-2" />
+                            Sofort hinzufügen
+                          </Button>
+                          <p className="text-xs text-amber-700 mt-3">
+                            Oder anderen Preis eingeben:
+                          </p>
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground mb-2">
+                          Kein Fixpreis hinterlegt - Preis eingeben:
+                        </p>
+                      )}
+                      
+                      <div className="flex items-center justify-center gap-2">
+                        <span className="text-2xl text-muted-foreground">CHF</span>
+                        <input
+                          type="number"
+                          className="price-input max-w-[200px]"
+                          placeholder="0.00"
+                          value={price}
+                          onChange={(e) => setPrice(e.target.value)}
+                          autoFocus={fixedPrice === null}
+                          min="0"
+                          step="0.50"
+                          data-testid="price-input"
+                        />
+                      </div>
+                    </div>
 
-                <div className="grid grid-cols-4 gap-2">
-                  {[1, 2, 3, 5, 8, 10, 15, 20].map((val) => (
-                    <Button
-                      key={val}
-                      variant="outline"
-                      className="h-12 font-display font-bold"
-                      onClick={() => setPrice(val.toString())}
-                      data-testid={`quick-price-${val}`}
-                    >
-                      {val}
-                    </Button>
-                  ))}
-                </div>
+                    <div className="grid grid-cols-4 gap-2">
+                      {[1, 2, 3, 5, 8, 10, 15, 20].map((val) => (
+                        <Button
+                          key={val}
+                          variant="outline"
+                          className="h-12 font-display font-bold"
+                          onClick={() => setPrice(val.toString())}
+                          data-testid={`quick-price-${val}`}
+                        >
+                          {val}
+                        </Button>
+                      ))}
+                    </div>
 
-                <div className="flex gap-3">
-                  <Button 
-                    variant="outline" 
-                    className="flex-1 h-12"
-                    onClick={() => setDialogStep(2)}
-                  >
-                    Zurück
-                  </Button>
-                  <Button 
-                    className="flex-1 h-12"
-                    onClick={handleAddToCart}
-                    disabled={!price || parseFloat(price) <= 0}
-                    data-testid="add-to-cart-btn"
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Hinzufügen
-                  </Button>
-                </div>
+                    <div className="flex gap-3">
+                      <Button 
+                        variant="outline" 
+                        className="flex-1 h-12"
+                        onClick={() => setDialogStep(3)}
+                      >
+                        Zurück
+                      </Button>
+                      <Button 
+                        className="flex-1 h-12"
+                        onClick={handleAddToCart}
+                        disabled={!price || parseFloat(price) <= 0}
+                        data-testid="add-to-cart-btn"
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Hinzufügen
+                      </Button>
+                    </div>
+                  </>
+                )}
               </div>
             )}
           </div>
