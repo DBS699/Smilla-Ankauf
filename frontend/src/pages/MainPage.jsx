@@ -386,6 +386,26 @@ export default function MainPage() {
               </Button>
             </Link>
 
+            {/* User Menu */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" data-testid="user-menu-btn">
+                  <User className="w-4 h-4 mr-2" />
+                  {user?.username}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem disabled className="text-xs text-muted-foreground">
+                  Rolle: {user?.role === 'admin' ? 'Administrator' : 'Mitarbeiter'}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout} className="text-destructive">
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Abmelden
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
             <Sheet open={isMobileCartOpen} onOpenChange={setIsMobileCartOpen}>
               <SheetTrigger asChild>
                 <Button variant="outline" size="sm" className="lg:hidden relative" data-testid="mobile-cart-btn">
