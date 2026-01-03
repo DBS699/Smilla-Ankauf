@@ -543,6 +543,8 @@ def main():
     tests = [
         tester.test_root_endpoint,
         tester.test_get_categories,
+        tester.test_login_system,
+        tester.test_get_users,
         tester.test_price_matrix_lookup,
         tester.test_price_matrix_download,
         tester.test_price_matrix_get,
