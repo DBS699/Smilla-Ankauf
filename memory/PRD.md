@@ -36,8 +36,16 @@ Eine App für den Ankauf von Kleidung bauen, basierend auf einer Excel-Vorlage. 
 - ✅ Excel Download repariert (Blob-Download statt about:blank)
 - ✅ Gefahrenzone Passwortschutz
 - ✅ Eigene Kategorien hinzufügen
-- ✅ "Unsicher? Google Lens öffnen" Button bei Preisniveau
+- ✅ "Unsicher? Google Bildersuche" Button bei Preisniveau
 - ✅ Farben für Preisniveau-Buttons anpassbar (Design-Tab)
+
+### Phase 4 - Login & erweiterte Anpassung (03.01.2026)
+- ✅ Login-System mit 2 Rollen: Admin (Vollzugriff) und Mitarbeiter
+- ✅ Benutzer: admin/1234 und smilla/1234
+- ✅ Gefahrenzone nur für Admin sichtbar
+- ✅ Farben für ALLE Elemente anpassbar (Preisniveau, Zustand, Relevanz)
+- ✅ Icon-Auswahl für eigene Kategorien (15 Icons zur Auswahl)
+- ✅ Google Lens ersetzt durch Google Bildersuche (war gesperrt)
 
 ## Tech Stack
 - **Frontend**: React + Tailwind CSS + Shadcn/UI
