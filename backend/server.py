@@ -308,6 +308,58 @@ async def delete_purchase(purchase_id: str):
         raise HTTPException(status_code=404, detail="Purchase not found")
     return {"message": "Purchase deleted"}
 
+# Export all purchases as Excel
+@api_router.get("/purchases/export/excel")
+async def export_purchases_excel():
+    purchases = await db.purchases.find({}, {"_id": 0}).sort("timestamp", -1).to_list(100000)
+    
+    # Flatten purchases into rows (one row per item)
+    rows = []
+    for p in purchases:
+        for item in p["items"]:
+            rows.append({
+                "Datum": p["timestamp"][:10],
+                "Zeit": p["timestamp"][11:16] if len(p["timestamp"]) > 16 else "",
+                "Ankauf-Nr": p["id"][:8].upper(),
+                "Kategorie": item.get("category", ""),
+                "Preisniveau": item.get("price_level", ""),
+                "Zustand": item.get("condition", ""),
+                "Relevanz": item.get("relevance", ""),
+                "Preis (CHF)": item.get("price", 0),
+                "Ankauf Total (CHF)": p["total"]
+            })
+    
+    if not rows:
+        # Empty export with headers
+        rows = [{"Datum": "", "Zeit": "", "Ankauf-Nr": "", "Kategorie": "", 
+                 "Preisniveau": "", "Zustand": "", "Relevanz": "", 
+                 "Preis (CHF)": "", "Ankauf Total (CHF)": ""}]
+    
+    df = pd.DataFrame(rows)
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Ankäufe')
+        
+        # Add summary sheet
+        summary_data = {
+            "Statistik": ["Anzahl Ankäufe", "Anzahl Artikel", "Gesamtsumme (CHF)"],
+            "Wert": [
+                len(purchases),
+                sum(len(p["items"]) for p in purchases),
+                sum(p["total"] for p in purchases)
+            ]
+        }
+        summary_df = pd.DataFrame(summary_data)
+        summary_df.to_excel(writer, index=False, sheet_name='Zusammenfassung')
+    
+    output.seek(0)
+    
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=ankaufe_export.xlsx"}
+    )
+
 # ============== Stats Routes ==============
 
 @api_router.get("/stats/daily", response_model=List[DailyStats])
