@@ -58,12 +58,14 @@ class ReWearPOSAPITester:
         """Test categories endpoint"""
         success, response = self.run_test("Get Categories", "GET", "api/categories", 200)
         if success:
-            # Verify response structure
-            if 'categories' in response and 'price_levels' in response and 'conditions' in response:
-                print("   ✅ Categories structure is correct")
+            # Verify response structure includes new relevance_levels
+            required_fields = ['categories', 'price_levels', 'conditions', 'relevance_levels']
+            if all(field in response for field in required_fields):
+                print("   ✅ Categories structure is correct (includes relevance_levels)")
+                print(f"   📋 Relevance levels: {response.get('relevance_levels', [])}")
                 return True
             else:
-                print("   ❌ Categories structure is incorrect")
+                print("   ❌ Categories structure is incorrect - missing relevance_levels")
                 return False
         return False
 
