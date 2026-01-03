@@ -213,7 +213,7 @@ export default function HistoryPage() {
                                   {purchase.items.map((item, idx) => (
                                     <div key={idx} className="flex justify-between text-sm">
                                       <span>
-                                        {item.category} ({item.price_level}, {item.condition})
+                                        {item.category} ({item.price_level}, {item.condition}, {item.relevance})
                                       </span>
                                       <span className="font-display font-medium">
                                         CHF {item.price.toFixed(2)}

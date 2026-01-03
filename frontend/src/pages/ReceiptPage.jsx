@@ -116,7 +116,7 @@ export default function ReceiptPage() {
                     <td className="py-2">
                       <p className="font-medium">{item.category}</p>
                       <p className="text-xs text-gray-500">
-                        {item.price_level} • {item.condition}
+                        {item.price_level} • {item.condition} • {item.relevance}
                       </p>
                     </td>
                     <td className="py-2 text-right font-bold">
