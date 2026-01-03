@@ -123,6 +123,9 @@ backend:
       - working: true
         agent: "main"
         comment: "GET/PUT /api/settings/receipt endpoints working"
+      - working: true
+        agent: "testing"
+        comment: "✅ TESTED: Receipt settings API fully functional. GET returns all 20 required fields (store info, toggles, font sizes). PUT successfully updates and persists settings. Verified with test data and reset to defaults."
 
   - task: "Export purchases with date filter"
     implemented: true
