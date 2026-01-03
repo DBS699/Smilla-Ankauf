@@ -4,7 +4,7 @@ import {
   Shirt, Layers, Ruler, Briefcase, Scissors, 
   Dumbbell, Waves, ShoppingBag, Trash2, History, 
   Plus, X, Check, Settings, Zap, HelpCircle, ExternalLink, LogOut, User,
-  Crown, Star, Heart, Sparkles, Gem, Gift, Tag, Minus, Palette
+  Crown, Star, Heart, Sparkles, Gem, Gift, Tag, Minus, Sun, Moon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -14,7 +14,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Slider } from '@/components/ui/slider';
 import { toast } from 'sonner';
-import { CATEGORIES, PRICE_LEVELS, CONDITIONS, RELEVANCE_LEVELS, BACKGROUNDS } from '@/lib/constants';
+import { CATEGORIES, PRICE_LEVELS, CONDITIONS, RELEVANCE_LEVELS } from '@/lib/constants';
 import { useAuth } from '@/contexts/AuthContext';
 import api from '@/lib/api';
 
@@ -65,7 +65,7 @@ export default function MainPage() {
   const [colors, setColors] = useState(DEFAULT_COLORS);
   const [categoryIcons, setCategoryIcons] = useState({});
   const [hiddenCategories, setHiddenCategories] = useState([]);
-  const [background, setBackground] = useState('paper');
+  const [darkMode, setDarkMode] = useState(false);
 
   useEffect(() => {
     loadTodayStats();
@@ -104,14 +104,25 @@ export default function MainPage() {
       if (settings?.hidden_categories) {
         setHiddenCategories(settings.hidden_categories);
       }
-      if (settings?.background) {
-        setBackground(settings.background);
+      if (settings?.darkMode !== undefined) {
+        setDarkMode(settings.darkMode);
       }
     } catch (error) {
       console.error('Failed to load settings:', error);
     }
   };
 
+  // Toggle dark/light mode
+  const toggleDarkMode = async () => {
+    const newMode = !darkMode;
+    setDarkMode(newMode);
+    try {
+      const currentSettings = await api.getSettings();
+      await api.updateSettings({ ...currentSettings, darkMode: newMode });
+    } catch (error) {
+      console.error('Failed to save dark mode:', error);
+    }
+  };
   // Combine default and custom categories, filter out hidden ones
   const allCategories = [
     ...CATEGORIES.filter(cat => !hiddenCategories.includes(cat.name)),
@@ -122,6 +133,11 @@ export default function MainPage() {
       image: cat.image || null
     }))
   ];
+
+  // Find longest category name for button width
+  const longestCategoryName = allCategories.reduce((longest, cat) => 
+    cat.name.length > longest.length ? cat.name : longest, ''
+  );
 
   const openCategoryDialog = (category) => {
     setSelectedCategory(category);
@@ -182,13 +198,7 @@ export default function MainPage() {
   };
 
   const handleChangeBackground = async (bgId) => {
-    setBackground(bgId);
-    try {
-      const currentSettings = await api.getSettings();
-      await api.updateSettings({ ...currentSettings, background: bgId });
-    } catch (error) {
-      console.error('Failed to save background:', error);
-    }
+    // Removed - using dark mode instead
   };
 
   const handleLogout = () => {
