@@ -47,6 +47,11 @@ Eine App für den Ankauf von Kleidung bauen, basierend auf einer Excel-Vorlage. 
 - ✅ Icon-Auswahl für eigene Kategorien (15 Icons zur Auswahl)
 - ✅ Google Lens ersetzt durch Google Bildersuche (war gesperrt)
 
+### Phase 5 - Bilder & Export (03.01.2026)
+- ✅ Bilder hochladen für eigene Kategorien (max 500KB, Base64)
+- ✅ Eigene Kategorien werden in Excel-Preismatrix inkludiert
+- ✅ Alle Ankauf-Daten als Excel exportieren (Historie-Seite)
+
 ## Tech Stack
 - **Frontend**: React + Tailwind CSS + Shadcn/UI
 - **Backend**: FastAPI (Python)
