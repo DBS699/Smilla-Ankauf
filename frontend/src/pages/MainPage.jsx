@@ -708,15 +708,15 @@ export default function MainPage() {
                           </Button>
                         </div>
                         
-                        {/* Vertical Slider */}
+                        {/* Vertical Slider - optimized for 0-30 range */}
                         <div className="flex flex-col items-center h-48">
-                          <span className="text-xs text-muted-foreground mb-2">100</span>
+                          <span className="text-xs text-muted-foreground mb-2">30</span>
                           <div className="relative h-full w-12 flex items-center justify-center">
                             <Slider
-                              value={[parseFloat(price) || 0]}
+                              value={[Math.min(parseFloat(price) || 0, 30)]}
                               onValueChange={(val) => setPrice(val[0].toString())}
                               min={0}
-                              max={100}
+                              max={30}
                               step={0.5}
                               orientation="vertical"
                               className="h-full"
@@ -750,9 +750,9 @@ export default function MainPage() {
                       </div>
                     </div>
 
-                    {/* Quick price buttons */}
-                    <div className="grid grid-cols-4 gap-2">
-                      {[1, 2, 3, 5, 8, 10, 15, 20, 25, 30, 40, 50].map((val) => (
+                    {/* Quick price buttons - common amounts */}
+                    <div className="grid grid-cols-5 gap-2 mb-3">
+                      {[1, 2, 3, 5, 8, 10, 12, 15, 20, 25].map((val) => (
                         <Button
                           key={val}
                           variant={parseFloat(price) === val ? "default" : "outline"}
@@ -763,6 +763,24 @@ export default function MainPage() {
                           {val}
                         </Button>
                       ))}
+                    </div>
+
+                    {/* Manual input for larger amounts */}
+                    <div className="flex items-center gap-2 mb-4 px-4">
+                      <span className="text-sm text-muted-foreground">Höherer Betrag:</span>
+                      <div className="flex items-center gap-1">
+                        <span className="text-sm font-medium">CHF</span>
+                        <input
+                          type="number"
+                          value={price}
+                          onChange={(e) => setPrice(e.target.value)}
+                          className="w-20 h-9 px-2 border rounded-md text-center font-display font-bold"
+                          placeholder="0.00"
+                          min="0"
+                          step="0.5"
+                          data-testid="price-manual-input"
+                        />
+                      </div>
                     </div>
 
                     <div className="flex gap-3 pt-2">
