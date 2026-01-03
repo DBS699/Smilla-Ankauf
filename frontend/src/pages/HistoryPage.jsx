@@ -116,17 +116,17 @@ export default function HistoryPage() {
     <div className="min-h-screen" data-testid="history-page">
       {/* Header */}
       <header className="bg-white border-b sticky top-0 z-40">
-        <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-4">
+        <div className="container mx-auto px-3 sm:px-4 py-2 sm:py-3 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 sm:gap-4 min-w-0">
             <Link to="/">
-              <Button variant="ghost" size="sm" data-testid="back-to-main">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Zurück
+              <Button variant="ghost" size="sm" data-testid="back-to-main" className="px-2 sm:px-3">
+                <ArrowLeft className="w-4 h-4 sm:mr-2" />
+                <span className="hidden sm:inline">Zurück</span>
               </Button>
             </Link>
-            <div>
-              <h1 className="text-xl font-bold text-primary">Ankaufs-Historie</h1>
-              <p className="text-sm text-muted-foreground">Übersicht aller Ankäufe</p>
+            <div className="min-w-0">
+              <h1 className="text-lg sm:text-xl font-bold text-primary truncate">Ankaufs-Historie</h1>
+              <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">Übersicht aller Ankäufe</p>
             </div>
           </div>
           <Popover open={showExportFilter} onOpenChange={setShowExportFilter}>
@@ -201,17 +201,17 @@ export default function HistoryPage() {
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-6 lg:py-8">
+      <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 lg:py-8">
         {/* Stats cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 mb-4 sm:mb-8">
           <Card className="stats-card">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-primary/10 rounded-lg">
-                <Calendar className="w-5 h-5 text-primary" />
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="p-1.5 sm:p-2 bg-primary/10 rounded-lg">
+                <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Heute</p>
-                <p className="font-display text-2xl font-bold" data-testid="stat-today-amount">
+              <div className="min-w-0">
+                <p className="text-xs sm:text-sm text-muted-foreground">Heute</p>
+                <p className="font-display text-lg sm:text-2xl font-bold truncate" data-testid="stat-today-amount">
                   CHF {todayStats.total_amount?.toFixed(2) || '0.00'}
                 </p>
               </div>
@@ -219,13 +219,13 @@ export default function HistoryPage() {
           </Card>
 
           <Card className="stats-card">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-emerald-100 rounded-lg">
-                <Package className="w-5 h-5 text-emerald-600" />
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="p-1.5 sm:p-2 bg-emerald-100 rounded-lg">
+                <Package className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-600" />
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Artikel heute</p>
-                <p className="font-display text-2xl font-bold" data-testid="stat-today-items">
+              <div className="min-w-0">
+                <p className="text-xs sm:text-sm text-muted-foreground">Artikel</p>
+                <p className="font-display text-lg sm:text-2xl font-bold" data-testid="stat-today-items">
                   {todayStats.total_items || 0}
                 </p>
               </div>
@@ -233,13 +233,13 @@ export default function HistoryPage() {
           </Card>
 
           <Card className="stats-card">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <TrendingUp className="w-5 h-5 text-blue-600" />
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="p-1.5 sm:p-2 bg-blue-100 rounded-lg">
+                <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Ankäufe heute</p>
-                <p className="font-display text-2xl font-bold" data-testid="stat-today-purchases">
+              <div className="min-w-0">
+                <p className="text-xs sm:text-sm text-muted-foreground">Ankäufe</p>
+                <p className="font-display text-lg sm:text-2xl font-bold" data-testid="stat-today-purchases">
                   {todayStats.total_purchases || 0}
                 </p>
               </div>
@@ -247,13 +247,13 @@ export default function HistoryPage() {
           </Card>
 
           <Card className="stats-card">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-amber-100 rounded-lg">
-                <TrendingUp className="w-5 h-5 text-amber-600" />
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="p-1.5 sm:p-2 bg-amber-100 rounded-lg">
+                <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-amber-600" />
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Gesamt</p>
-                <p className="font-display text-2xl font-bold" data-testid="stat-total">
+              <div className="min-w-0">
+                <p className="text-xs sm:text-sm text-muted-foreground">Gesamt</p>
+                <p className="font-display text-lg sm:text-2xl font-bold" data-testid="stat-total">
                   {purchases.length}
                 </p>
               </div>
