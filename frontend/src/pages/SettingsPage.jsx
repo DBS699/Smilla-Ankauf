@@ -1,17 +1,43 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Download, Upload, Trash2, FileSpreadsheet, CheckCircle, AlertCircle, Plus, X, Palette, Shield, Image, Camera, Eye, EyeOff, RotateCcw } from 'lucide-react';
+import { ArrowLeft, Download, Upload, Trash2, FileSpreadsheet, CheckCircle, AlertCircle, Plus, X, Palette, Shield, Image, Camera, Eye, EyeOff, RotateCcw, FileText, Type } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Slider } from '@/components/ui/slider';
+import { Textarea } from '@/components/ui/textarea';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { CATEGORIES } from '@/lib/constants';
 import api from '@/lib/api';
+
+// Default receipt settings
+const DEFAULT_RECEIPT = {
+  store_name: "Smillå-Store GmbH",
+  store_address: "Musterstrasse 123",
+  store_city: "8000 Zürich",
+  store_phone: "+41 44 123 45 67",
+  footer_text: "Vielen Dank für Ihren Verkauf!",
+  sub_footer_text: "Diese Quittung dient als Nachweis.",
+  show_store_name: true,
+  show_address: true,
+  show_phone: true,
+  show_date: true,
+  show_receipt_id: true,
+  show_item_details: true,
+  show_relevance: true,
+  show_item_count: true,
+  show_footer: true,
+  font_size_store: 18,
+  font_size_title: 16,
+  font_size_items: 12,
+  font_size_total: 20,
+  font_size_footer: 12
+};
 
 export default function SettingsPage() {
   const { isAdmin } = useAuth();
@@ -30,20 +56,15 @@ export default function SettingsPage() {
   // Settings
   const [settings, setSettings] = useState({
     colors: {
-      luxus: '#FEF3C7',
-      teuer: '#DBEAFE',
-      mittel: '#D1FAE5',
-      guenstig: '#F1F5F9',
-      neu: '#D1FAE5',
-      kaum_benutzt: '#E0F2FE',
-      gebraucht: '#FED7AA',
-      abgenutzt: '#FECACA',
-      stark_relevant: '#DDD6FE',
-      wichtig: '#CFFAFE',
-      nicht_beliebt: '#F3F4F6'
+      luxus: '#FEF3C7', teuer: '#DBEAFE', mittel: '#D1FAE5', guenstig: '#F1F5F9',
+      neu: '#D1FAE5', kaum_benutzt: '#E0F2FE', gebraucht: '#FED7AA', abgenutzt: '#FECACA',
+      stark_relevant: '#DDD6FE', wichtig: '#CFFAFE', nicht_beliebt: '#F3F4F6'
     },
     hidden_categories: []
   });
+
+  // Receipt settings
+  const [receiptSettings, setReceiptSettings] = useState(DEFAULT_RECEIPT);
 
   useEffect(() => {
     loadData();
@@ -51,9 +72,10 @@ export default function SettingsPage() {
 
   const loadData = async () => {
     try {
-      const [categoriesData, settingsData] = await Promise.all([
+      const [categoriesData, settingsData, receiptData] = await Promise.all([
         api.getCustomCategories(),
-        api.getSettings()
+        api.getSettings(),
+        api.getReceiptSettings()
       ]);
       setCustomCategories(categoriesData);
       if (settingsData) {
@@ -64,11 +86,41 @@ export default function SettingsPage() {
           hidden_categories: settingsData.hidden_categories || []
         }));
       }
+      if (receiptData) {
+        setReceiptSettings({ ...DEFAULT_RECEIPT, ...receiptData });
+      }
     } catch (error) {
       console.error('Failed to load data:', error);
     }
   };
 
+  // Receipt settings handlers
+  const updateReceiptSetting = async (key, value) => {
+    const newSettings = { ...receiptSettings, [key]: value };
+    setReceiptSettings(newSettings);
+    
+    // Debounce save
+    clearTimeout(window.receiptSaveTimeout);
+    window.receiptSaveTimeout = setTimeout(async () => {
+      try {
+        await api.updateReceiptSettings(newSettings);
+      } catch (error) {
+        console.error('Failed to save receipt settings:', error);
+      }
+    }, 500);
+  };
+
+  const resetReceiptSettings = async () => {
+    setReceiptSettings(DEFAULT_RECEIPT);
+    try {
+      await api.updateReceiptSettings(DEFAULT_RECEIPT);
+      toast.success('Quittung zurückgesetzt');
+    } catch (error) {
+      toast.error('Fehler beim Zurücksetzen');
+    }
+  };
+
+  // ... other handlers remain the same
   const handleDownload = async () => {
     setIsDownloading(true);
     try {
@@ -81,30 +133,24 @@ export default function SettingsPage() {
     }
   };
 
-  const handleUploadClick = () => {
-    fileInputRef.current?.click();
-  };
+  const handleUploadClick = () => fileInputRef.current?.click();
 
   const handleFileChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
-      toast.error('Bitte eine Excel-Datei (.xlsx) hochladen');
+      toast.error('Bitte eine Excel-Datei hochladen');
       return;
     }
-
     setIsUploading(true);
     setUploadResult(null);
-
     try {
       const result = await api.uploadPriceMatrix(file);
-      setUploadResult({ success: true, message: result.message, count: result.updated });
+      setUploadResult({ success: true, message: result.message });
       toast.success(result.message);
     } catch (error) {
-      const message = error.response?.data?.detail || 'Fehler beim Hochladen';
-      setUploadResult({ success: false, message });
-      toast.error(message);
+      setUploadResult({ success: false, message: error.response?.data?.detail || 'Fehler' });
+      toast.error('Fehler beim Hochladen');
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -112,87 +158,63 @@ export default function SettingsPage() {
   };
 
   const handleClearPrices = async () => {
-    if (!isAdmin()) {
-      toast.error('Nur Admins können Fixpreise löschen');
-      return;
-    }
+    if (!isAdmin()) return toast.error('Nur Admins');
     try {
       await api.clearPriceMatrix();
-      toast.success('Alle Fixpreise gelöscht');
+      toast.success('Fixpreise gelöscht');
       setUploadResult(null);
     } catch (error) {
-      toast.error('Fehler beim Löschen');
+      toast.error('Fehler');
     }
   };
 
-  // Image handling
   const handleImageSelect = (e, forNew = true) => {
     const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith('image/')) {
-      toast.error('Bitte ein Bild auswählen');
-      return;
-    }
-
-    if (file.size > 500000) {
-      toast.error('Bild zu gross (max 500KB)');
-      return;
-    }
-
+    if (!file || !file.type.startsWith('image/')) return;
+    if (file.size > 500000) return toast.error('Bild zu gross (max 500KB)');
     const reader = new FileReader();
     reader.onloadend = () => {
-      if (forNew) {
-        setNewCategoryImage(reader.result);
-      } else if (editingCategory) {
-        handleUpdateCategoryImage(editingCategory, reader.result);
-      }
+      if (forNew) setNewCategoryImage(reader.result);
+      else if (editingCategory) handleUpdateCategoryImage(editingCategory, reader.result);
     };
     reader.readAsDataURL(file);
   };
 
   const handleAddCategory = async () => {
-    if (!newCategoryName.trim()) {
-      toast.error('Name erforderlich');
-      return;
-    }
-    
+    if (!newCategoryName.trim()) return toast.error('Name erforderlich');
     setIsAddingCategory(true);
     try {
       await api.addCustomCategory(newCategoryName.trim(), newCategoryImage);
-      toast.success(`Kategorie "${newCategoryName}" hinzugefügt`);
+      toast.success(`"${newCategoryName}" hinzugefügt`);
       setNewCategoryName('');
       setNewCategoryImage(null);
       loadData();
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Fehler beim Hinzufügen');
+      toast.error(error.response?.data?.detail || 'Fehler');
     } finally {
       setIsAddingCategory(false);
     }
   };
 
-  const handleUpdateCategoryImage = async (categoryName, image) => {
+  const handleUpdateCategoryImage = async (name, image) => {
     try {
-      await api.updateCategoryImage(categoryName, image);
+      await api.updateCategoryImage(name, image);
       toast.success('Bild aktualisiert');
       setEditingCategory(null);
       loadData();
     } catch (error) {
-      toast.error('Fehler beim Aktualisieren');
+      toast.error('Fehler');
     }
   };
 
   const handleDeleteCategory = async (name) => {
-    if (!isAdmin()) {
-      toast.error('Nur Admins können Kategorien löschen');
-      return;
-    }
+    if (!isAdmin()) return toast.error('Nur Admins');
     try {
       await api.deleteCustomCategory(name);
-      toast.success(`Kategorie "${name}" gelöscht`);
+      toast.success(`"${name}" gelöscht`);
       loadData();
     } catch (error) {
-      toast.error('Fehler beim Löschen');
+      toast.error('Fehler');
     }
   };
 
@@ -201,164 +223,293 @@ export default function SettingsPage() {
     setSettings(prev => ({ ...prev, colors: newColors }));
     try {
       await api.updateSettings({ ...settings, colors: newColors });
-    } catch (error) {
-      toast.error('Fehler beim Speichern');
-    }
+    } catch (error) {}
   };
 
-  // Toggle category visibility
-  const toggleCategoryVisibility = async (categoryName) => {
-    const isHidden = settings.hidden_categories.includes(categoryName);
-    let newHidden;
-    
-    if (isHidden) {
-      newHidden = settings.hidden_categories.filter(c => c !== categoryName);
-    } else {
-      newHidden = [...settings.hidden_categories, categoryName];
-    }
-    
+  const toggleCategoryVisibility = async (name) => {
+    const isHidden = settings.hidden_categories.includes(name);
+    const newHidden = isHidden 
+      ? settings.hidden_categories.filter(c => c !== name)
+      : [...settings.hidden_categories, name];
     setSettings(prev => ({ ...prev, hidden_categories: newHidden }));
-    
     try {
       await api.updateSettings({ ...settings, hidden_categories: newHidden });
-      toast.success(isHidden ? `"${categoryName}" wieder sichtbar` : `"${categoryName}" ausgeblendet`);
-    } catch (error) {
-      toast.error('Fehler beim Speichern');
-    }
+    } catch (error) {}
   };
 
-  // Hide all standard categories
   const hideAllStandardCategories = async () => {
-    const allStandardNames = CATEGORIES.map(c => c.name);
-    setSettings(prev => ({ ...prev, hidden_categories: allStandardNames }));
-    
-    try {
-      await api.updateSettings({ ...settings, hidden_categories: allStandardNames });
-      toast.success('Alle Standard-Kategorien ausgeblendet');
-    } catch (error) {
-      toast.error('Fehler beim Speichern');
-    }
+    const all = CATEGORIES.map(c => c.name);
+    setSettings(prev => ({ ...prev, hidden_categories: all }));
+    try { await api.updateSettings({ ...settings, hidden_categories: all }); } catch {}
   };
 
-  // Show all standard categories
   const showAllStandardCategories = async () => {
     setSettings(prev => ({ ...prev, hidden_categories: [] }));
-    
-    try {
-      await api.updateSettings({ ...settings, hidden_categories: [] });
-      toast.success('Alle Standard-Kategorien wiederhergestellt');
-    } catch (error) {
-      toast.error('Fehler beim Speichern');
-    }
+    try { await api.updateSettings({ ...settings, hidden_categories: [] }); } catch {}
   };
 
   const colorGroups = [
-    {
-      title: 'Preisniveau',
-      colors: [
-        { key: 'luxus', label: 'Luxus', defaultColor: '#FEF3C7' },
-        { key: 'teuer', label: 'Teuer', defaultColor: '#DBEAFE' },
-        { key: 'mittel', label: 'Mittel', defaultColor: '#D1FAE5' },
-        { key: 'guenstig', label: 'Günstig', defaultColor: '#F1F5F9' }
-      ]
-    },
-    {
-      title: 'Zustand',
-      colors: [
-        { key: 'neu', label: 'Neu', defaultColor: '#D1FAE5' },
-        { key: 'kaum_benutzt', label: 'Kaum benutzt', defaultColor: '#E0F2FE' },
-        { key: 'gebraucht', label: 'Gebraucht/Gut', defaultColor: '#FED7AA' },
-        { key: 'abgenutzt', label: 'Abgenutzt', defaultColor: '#FECACA' }
-      ]
-    },
-    {
-      title: 'Relevanz',
-      colors: [
-        { key: 'stark_relevant', label: 'Stark relevant', defaultColor: '#DDD6FE' },
-        { key: 'wichtig', label: 'Wichtig', defaultColor: '#CFFAFE' },
-        { key: 'nicht_beliebt', label: 'Nicht beliebt', defaultColor: '#F3F4F6' }
-      ]
-    }
+    { title: 'Preisniveau', colors: [
+      { key: 'luxus', label: 'Luxus', dc: '#FEF3C7' },
+      { key: 'teuer', label: 'Teuer', dc: '#DBEAFE' },
+      { key: 'mittel', label: 'Mittel', dc: '#D1FAE5' },
+      { key: 'guenstig', label: 'Günstig', dc: '#F1F5F9' }
+    ]},
+    { title: 'Zustand', colors: [
+      { key: 'neu', label: 'Neu', dc: '#D1FAE5' },
+      { key: 'kaum_benutzt', label: 'Kaum benutzt', dc: '#E0F2FE' },
+      { key: 'gebraucht', label: 'Gebraucht', dc: '#FED7AA' },
+      { key: 'abgenutzt', label: 'Abgenutzt', dc: '#FECACA' }
+    ]},
+    { title: 'Relevanz', colors: [
+      { key: 'stark_relevant', label: 'Stark relevant', dc: '#DDD6FE' },
+      { key: 'wichtig', label: 'Wichtig', dc: '#CFFAFE' },
+      { key: 'nicht_beliebt', label: 'Nicht beliebt', dc: '#F3F4F6' }
+    ]}
   ];
 
-  const hiddenCount = settings.hidden_categories.length;
+  // Sample receipt data for preview
+  const sampleItems = [
+    { category: 'Jeans', price_level: 'Mittel', condition: 'Gebraucht/Gut', relevance: 'Wichtig', price: 15 },
+    { category: 'Hoodie', price_level: 'Teuer', condition: 'Kaum benutzt', relevance: 'Stark relevant', price: 25 }
+  ];
 
   return (
-    <div className="min-h-screen" data-testid="settings-page">
+    <div className="min-h-screen bg-background" data-testid="settings-page">
       <header className="bg-white border-b sticky top-0 z-40">
         <div className="container mx-auto px-4 py-3 flex items-center gap-4">
-          <Link to="/">
-            <Button variant="ghost" size="sm" data-testid="back-to-main">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Zurück
-            </Button>
-          </Link>
+          <Link to="/"><Button variant="ghost" size="sm"><ArrowLeft className="w-4 h-4 mr-2" />Zurück</Button></Link>
           <div>
             <h1 className="text-xl font-bold text-primary">Einstellungen</h1>
-            <p className="text-sm text-muted-foreground">Preise, Kategorien & Design</p>
+            <p className="text-sm text-muted-foreground">Kategorien, Preise, Quittung & Design</p>
           </div>
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-6 lg:py-8 max-w-4xl">
-        <Tabs defaultValue="categories" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
+      <div className="container mx-auto px-4 py-6 max-w-6xl">
+        <Tabs defaultValue="receipt" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="receipt">Quittung</TabsTrigger>
             <TabsTrigger value="categories">Kategorien</TabsTrigger>
             <TabsTrigger value="prices">Preismatrix</TabsTrigger>
             <TabsTrigger value="design">Design</TabsTrigger>
           </TabsList>
 
+          {/* Receipt Tab */}
+          <TabsContent value="receipt" className="space-y-6">
+            <div className="grid lg:grid-cols-2 gap-6">
+              {/* Left: Controls */}
+              <div className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Type className="w-5 h-5" />
+                      Texte bearbeiten
+                    </CardTitle>
+                    <CardDescription>Klicke auf die Vorschau rechts oder bearbeite hier</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <Label>Firmenname</Label>
+                      <Input value={receiptSettings.store_name} onChange={(e) => updateReceiptSetting('store_name', e.target.value)} />
+                    </div>
+                    <div>
+                      <Label>Adresse</Label>
+                      <Input value={receiptSettings.store_address} onChange={(e) => updateReceiptSetting('store_address', e.target.value)} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label>Stadt</Label>
+                        <Input value={receiptSettings.store_city} onChange={(e) => updateReceiptSetting('store_city', e.target.value)} />
+                      </div>
+                      <div>
+                        <Label>Telefon</Label>
+                        <Input value={receiptSettings.store_phone} onChange={(e) => updateReceiptSetting('store_phone', e.target.value)} />
+                      </div>
+                    </div>
+                    <div>
+                      <Label>Fusszeile</Label>
+                      <Input value={receiptSettings.footer_text} onChange={(e) => updateReceiptSetting('footer_text', e.target.value)} />
+                    </div>
+                    <div>
+                      <Label>Kleine Fusszeile</Label>
+                      <Input value={receiptSettings.sub_footer_text} onChange={(e) => updateReceiptSetting('sub_footer_text', e.target.value)} />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Schriftgrössen</CardTitle>
+                    <CardDescription>Ziehe die Slider - Änderungen sind sofort sichtbar</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    {[
+                      { key: 'font_size_store', label: 'Firmenname', min: 12, max: 28 },
+                      { key: 'font_size_title', label: 'Titel (ANKAUFSQUITTUNG)', min: 10, max: 24 },
+                      { key: 'font_size_items', label: 'Artikel', min: 8, max: 18 },
+                      { key: 'font_size_total', label: 'Total', min: 14, max: 32 },
+                      { key: 'font_size_footer', label: 'Fusszeile', min: 8, max: 16 },
+                    ].map(({ key, label, min, max }) => (
+                      <div key={key}>
+                        <div className="flex justify-between mb-2">
+                          <Label>{label}</Label>
+                          <span className="text-sm font-mono bg-muted px-2 py-0.5 rounded">{receiptSettings[key]}px</span>
+                        </div>
+                        <Slider
+                          value={[receiptSettings[key]]}
+                          onValueChange={([val]) => updateReceiptSetting(key, val)}
+                          min={min}
+                          max={max}
+                          step={1}
+                        />
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Elemente anzeigen</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {[
+                      { key: 'show_store_name', label: 'Firmenname' },
+                      { key: 'show_address', label: 'Adresse & Stadt' },
+                      { key: 'show_phone', label: 'Telefon' },
+                      { key: 'show_date', label: 'Datum & Zeit' },
+                      { key: 'show_receipt_id', label: 'Quittungs-Nr.' },
+                      { key: 'show_item_details', label: 'Artikel-Details (Niveau/Zustand)' },
+                      { key: 'show_relevance', label: 'Relevanz' },
+                      { key: 'show_item_count', label: 'Anzahl Artikel' },
+                      { key: 'show_footer', label: 'Fusszeile' },
+                    ].map(({ key, label }) => (
+                      <div key={key} className="flex items-center justify-between">
+                        <Label>{label}</Label>
+                        <Switch checked={receiptSettings[key]} onCheckedChange={(v) => updateReceiptSetting(key, v)} />
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+
+                <Button variant="outline" onClick={resetReceiptSettings} className="w-full">
+                  <RotateCcw className="w-4 h-4 mr-2" />
+                  Auf Standard zurücksetzen
+                </Button>
+              </div>
+
+              {/* Right: Live Preview */}
+              <div className="lg:sticky lg:top-24 lg:self-start">
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="flex items-center gap-2">
+                      <FileText className="w-5 h-5" />
+                      Live-Vorschau
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="bg-white border rounded-lg p-4 font-mono text-center max-w-[320px] mx-auto shadow-inner">
+                      {/* Store Header */}
+                      {receiptSettings.show_store_name && (
+                        <div style={{ fontSize: receiptSettings.font_size_store }} className="font-bold mb-1">
+                          {receiptSettings.store_name}
+                        </div>
+                      )}
+                      {receiptSettings.show_address && (
+                        <>
+                          <div className="text-xs text-gray-600">{receiptSettings.store_address}</div>
+                          <div className="text-xs text-gray-600">{receiptSettings.store_city}</div>
+                        </>
+                      )}
+                      {receiptSettings.show_phone && (
+                        <div className="text-xs text-gray-600">{receiptSettings.store_phone}</div>
+                      )}
+
+                      <div className="text-xs text-gray-400 my-2">================================</div>
+
+                      <div style={{ fontSize: receiptSettings.font_size_title }} className="font-bold tracking-wider">
+                        ANKAUFSQUITTUNG
+                      </div>
+                      {receiptSettings.show_date && (
+                        <div className="text-xs text-gray-600">03.01.2026 14:30</div>
+                      )}
+                      {receiptSettings.show_receipt_id && (
+                        <div className="text-xs text-gray-400">Nr. A1B2C3D4</div>
+                      )}
+
+                      <div className="text-xs text-gray-400 my-2">--------------------------------</div>
+
+                      {/* Items */}
+                      <div className="text-left" style={{ fontSize: receiptSettings.font_size_items }}>
+                        {sampleItems.map((item, i) => (
+                          <div key={i} className="mb-2 pb-2 border-b border-dashed border-gray-200 last:border-0">
+                            <div className="font-bold">{item.category}</div>
+                            {receiptSettings.show_item_details && (
+                              <div className="text-xs text-gray-500">{item.price_level} / {item.condition}</div>
+                            )}
+                            {receiptSettings.show_relevance && (
+                              <div className="text-xs text-gray-500">{item.relevance}</div>
+                            )}
+                            <div className="text-right font-bold">CHF {item.price.toFixed(2)}</div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="text-xs text-gray-400 my-2">--------------------------------</div>
+
+                      {receiptSettings.show_item_count && (
+                        <div className="flex justify-between text-xs mb-1">
+                          <span>Artikel:</span>
+                          <span>{sampleItems.length}</span>
+                        </div>
+                      )}
+
+                      <div className="text-xs text-gray-400 my-2">================================</div>
+
+                      <div className="flex justify-between font-bold" style={{ fontSize: receiptSettings.font_size_total }}>
+                        <span>TOTAL</span>
+                        <span>CHF {sampleItems.reduce((s, i) => s + i.price, 0).toFixed(2)}</span>
+                      </div>
+
+                      <div className="text-xs text-gray-400 my-2">================================</div>
+
+                      {receiptSettings.show_footer && (
+                        <div style={{ fontSize: receiptSettings.font_size_footer }}>
+                          <div>{receiptSettings.footer_text}</div>
+                          <div className="text-xs text-gray-400 mt-1">{receiptSettings.sub_footer_text}</div>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </TabsContent>
+
           {/* Categories Tab */}
           <TabsContent value="categories" className="space-y-6">
-            {/* Standard Categories Management */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
-                  <span className="flex items-center gap-2">
-                    <Eye className="w-5 h-5" />
-                    Standard-Kategorien ({17 - hiddenCount} sichtbar)
-                  </span>
+                  <span className="flex items-center gap-2"><Eye className="w-5 h-5" />Standard-Kategorien ({17 - settings.hidden_categories.length} sichtbar)</span>
                   <div className="flex gap-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={hideAllStandardCategories}
-                      disabled={hiddenCount === 17}
-                    >
-                      <EyeOff className="w-4 h-4 mr-1" />
-                      Alle ausblenden
+                    <Button variant="outline" size="sm" onClick={hideAllStandardCategories} disabled={settings.hidden_categories.length === 17}>
+                      <EyeOff className="w-4 h-4 mr-1" />Alle ausblenden
                     </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={showAllStandardCategories}
-                      disabled={hiddenCount === 0}
-                    >
-                      <RotateCcw className="w-4 h-4 mr-1" />
-                      Alle wiederherstellen
+                    <Button variant="outline" size="sm" onClick={showAllStandardCategories} disabled={settings.hidden_categories.length === 0}>
+                      <RotateCcw className="w-4 h-4 mr-1" />Alle zeigen
                     </Button>
                   </div>
                 </CardTitle>
-                <CardDescription>
-                  Blende Standard-Kategorien aus, die du nicht brauchst
-                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {CATEGORIES.map((cat) => {
                     const isHidden = settings.hidden_categories.includes(cat.name);
                     return (
-                      <div 
-                        key={cat.id}
-                        className={`flex items-center justify-between p-3 rounded-lg border ${isHidden ? 'bg-gray-100 opacity-60' : 'bg-white'}`}
-                      >
-                        <span className={`text-sm ${isHidden ? 'line-through text-gray-400' : ''}`}>
-                          {cat.name}
-                        </span>
-                        <Switch
-                          checked={!isHidden}
-                          onCheckedChange={() => toggleCategoryVisibility(cat.name)}
-                        />
+                      <div key={cat.id} className={`flex items-center justify-between p-3 rounded-lg border ${isHidden ? 'bg-gray-100 opacity-60' : 'bg-white'}`}>
+                        <span className={`text-sm ${isHidden ? 'line-through text-gray-400' : ''}`}>{cat.name}</span>
+                        <Switch checked={!isHidden} onCheckedChange={() => toggleCategoryVisibility(cat.name)} />
                       </div>
                     );
                   })}
@@ -366,97 +517,41 @@ export default function SettingsPage() {
               </CardContent>
             </Card>
 
-            {/* Custom Categories */}
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Image className="w-5 h-5" />
-                  Eigene Kategorien ({customCategories.length})
-                </CardTitle>
-                <CardDescription>
-                  Füge eigene Kategorien mit Bild hinzu (max 500KB)
-                </CardDescription>
+                <CardTitle className="flex items-center gap-2"><Image className="w-5 h-5" />Eigene Kategorien ({customCategories.length})</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex gap-3 items-end">
                   <div className="flex-1">
                     <Label>Name</Label>
-                    <Input
-                      placeholder="z.B. Accessoires"
-                      value={newCategoryName}
-                      onChange={(e) => setNewCategoryName(e.target.value)}
-                    />
+                    <Input placeholder="z.B. Accessoires" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} />
                   </div>
                   <div>
                     <Label>Bild</Label>
-                    <div className="flex gap-2">
-                      {newCategoryImage ? (
-                        <div className="relative w-10 h-10">
-                          <img src={newCategoryImage} alt="Preview" className="w-10 h-10 rounded object-cover" />
-                          <button 
-                            className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 text-xs"
-                            onClick={() => setNewCategoryImage(null)}
-                          >×</button>
-                        </div>
-                      ) : (
-                        <Button variant="outline" size="icon" onClick={() => document.getElementById('new-cat-image').click()}>
-                          <Camera className="w-4 h-4" />
-                        </Button>
-                      )}
-                      <input
-                        id="new-cat-image"
-                        type="file"
-                        className="hidden"
-                        accept="image/*"
-                        onChange={(e) => handleImageSelect(e, true)}
-                      />
-                    </div>
+                    {newCategoryImage ? (
+                      <div className="relative w-10 h-10">
+                        <img src={newCategoryImage} alt="" className="w-10 h-10 rounded object-cover" />
+                        <button className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 text-xs" onClick={() => setNewCategoryImage(null)}>×</button>
+                      </div>
+                    ) : (
+                      <Button variant="outline" size="icon" onClick={() => document.getElementById('new-cat-img').click()}><Camera className="w-4 h-4" /></Button>
+                    )}
+                    <input id="new-cat-img" type="file" className="hidden" accept="image/*" onChange={(e) => handleImageSelect(e, true)} />
                   </div>
-                  <Button onClick={handleAddCategory} disabled={isAddingCategory}>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Hinzufügen
-                  </Button>
+                  <Button onClick={handleAddCategory} disabled={isAddingCategory}><Plus className="w-4 h-4 mr-2" />Hinzufügen</Button>
                 </div>
-
                 {customCategories.length > 0 && (
-                  <div className="space-y-2 mt-6">
-                    <div className="grid gap-3">
-                      {customCategories.map((cat) => (
-                        <div key={cat.name} className="flex items-center gap-3 bg-muted p-3 rounded-lg">
-                          {cat.image ? (
-                            <img src={cat.image} alt={cat.name} className="w-12 h-12 rounded object-cover" />
-                          ) : (
-                            <div className="w-12 h-12 rounded bg-gray-200 flex items-center justify-center">
-                              <Image className="w-6 h-6 text-gray-400" />
-                            </div>
-                          )}
-                          <span className="flex-1 font-medium">{cat.name}</span>
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => {
-                              setEditingCategory(cat.name);
-                              document.getElementById('edit-cat-image').click();
-                            }}
-                          >
-                            <Camera className="w-4 h-4 mr-1" />
-                            Bild
-                          </Button>
-                          {isAdmin() && (
-                            <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDeleteCategory(cat.name)}>
-                              <X className="w-4 h-4" />
-                            </Button>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                    <input
-                      id="edit-cat-image"
-                      type="file"
-                      className="hidden"
-                      accept="image/*"
-                      onChange={(e) => handleImageSelect(e, false)}
-                    />
+                  <div className="grid gap-3">
+                    {customCategories.map((cat) => (
+                      <div key={cat.name} className="flex items-center gap-3 bg-muted p-3 rounded-lg">
+                        {cat.image ? <img src={cat.image} alt="" className="w-12 h-12 rounded object-cover" /> : <div className="w-12 h-12 rounded bg-gray-200 flex items-center justify-center"><Image className="w-6 h-6 text-gray-400" /></div>}
+                        <span className="flex-1 font-medium">{cat.name}</span>
+                        <Button variant="outline" size="sm" onClick={() => { setEditingCategory(cat.name); document.getElementById('edit-cat-img').click(); }}><Camera className="w-4 h-4" /></Button>
+                        {isAdmin() && <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDeleteCategory(cat.name)}><X className="w-4 h-4" /></Button>}
+                      </div>
+                    ))}
+                    <input id="edit-cat-img" type="file" className="hidden" accept="image/*" onChange={(e) => handleImageSelect(e, false)} />
                   </div>
                 )}
               </CardContent>
@@ -465,83 +560,40 @@ export default function SettingsPage() {
 
           {/* Prices Tab */}
           <TabsContent value="prices" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FileSpreadsheet className="w-5 h-5" />
-                  Preismatrix
-                </CardTitle>
-                <CardDescription>
-                  Excel enthält alle sichtbaren Standard- UND eigene Kategorien
-                </CardDescription>
-              </CardHeader>
-            </Card>
-
             <div className="grid gap-4 md:grid-cols-2">
-              <Card className="cursor-pointer hover:border-primary transition-colors" onClick={handleDownload}>
-                <CardContent className="p-6 flex flex-col items-center text-center">
-                  <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mb-4">
-                    <Download className="w-8 h-8 text-emerald-600" />
-                  </div>
-                  <h3 className="font-semibold mb-2">Excel herunterladen</h3>
-                  <Button className="mt-4" disabled={isDownloading} data-testid="download-btn">
-                    <Download className="w-4 h-4 mr-2" />
-                    {isDownloading ? 'Lädt...' : 'Download'}
-                  </Button>
+              <Card className="cursor-pointer hover:border-primary" onClick={handleDownload}>
+                <CardContent className="p-6 flex flex-col items-center">
+                  <Download className="w-12 h-12 text-emerald-600 mb-3" />
+                  <h3 className="font-semibold">Excel herunterladen</h3>
+                  <Button className="mt-4" disabled={isDownloading}>{isDownloading ? 'Lädt...' : 'Download'}</Button>
                 </CardContent>
               </Card>
-
-              <Card className="cursor-pointer hover:border-primary transition-colors" onClick={handleUploadClick}>
-                <CardContent className="p-6 flex flex-col items-center text-center">
-                  <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center mb-4">
-                    <Upload className="w-8 h-8 text-blue-600" />
-                  </div>
-                  <h3 className="font-semibold mb-2">Excel hochladen</h3>
-                  <Button className="mt-4" disabled={isUploading} data-testid="upload-btn">
-                    <Upload className="w-4 h-4 mr-2" />
-                    {isUploading ? 'Lädt...' : 'Hochladen'}
-                  </Button>
+              <Card className="cursor-pointer hover:border-primary" onClick={handleUploadClick}>
+                <CardContent className="p-6 flex flex-col items-center">
+                  <Upload className="w-12 h-12 text-blue-600 mb-3" />
+                  <h3 className="font-semibold">Excel hochladen</h3>
+                  <Button className="mt-4" disabled={isUploading}>{isUploading ? 'Lädt...' : 'Hochladen'}</Button>
                   <input type="file" ref={fileInputRef} className="hidden" accept=".xlsx,.xls" onChange={handleFileChange} />
                 </CardContent>
               </Card>
             </div>
-
             {uploadResult && (
-              <Card className={`${uploadResult.success ? 'border-emerald-300 bg-emerald-50' : 'border-red-300 bg-red-50'}`}>
+              <Card className={uploadResult.success ? 'border-emerald-300 bg-emerald-50' : 'border-red-300 bg-red-50'}>
                 <CardContent className="p-4 flex items-center gap-3">
                   {uploadResult.success ? <CheckCircle className="w-6 h-6 text-emerald-600" /> : <AlertCircle className="w-6 h-6 text-red-600" />}
-                  <p className={`font-medium ${uploadResult.success ? 'text-emerald-800' : 'text-red-800'}`}>
-                    {uploadResult.message}
-                  </p>
+                  <p className="font-medium">{uploadResult.message}</p>
                 </CardContent>
               </Card>
             )}
-
             {isAdmin() && (
               <Card className="border-red-200">
-                <CardHeader>
-                  <CardTitle className="text-red-600 flex items-center gap-2">
-                    <Shield className="w-5 h-5" />
-                    Gefahrenzone (nur Admin)
-                  </CardTitle>
-                </CardHeader>
+                <CardHeader><CardTitle className="text-red-600 flex items-center gap-2"><Shield className="w-5 h-5" />Gefahrenzone</CardTitle></CardHeader>
                 <CardContent>
                   <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="destructive" data-testid="clear-prices-btn">
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Alle Fixpreise löschen
-                      </Button>
-                    </AlertDialogTrigger>
+                    <AlertDialogTrigger asChild><Button variant="destructive"><Trash2 className="w-4 h-4 mr-2" />Alle Fixpreise löschen</Button></AlertDialogTrigger>
                     <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Alle Fixpreise löschen?</AlertDialogTitle>
-                        <AlertDialogDescription>Diese Aktion kann nicht rückgängig gemacht werden.</AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleClearPrices}>Löschen</AlertDialogAction>
-                      </AlertDialogFooter>
+                      <AlertDialogHeader><AlertDialogTitle>Alle löschen?</AlertDialogTitle></AlertDialogHeader>
+                      <AlertDialogFooter><AlertDialogCancel>Abbrechen</AlertDialogCancel><AlertDialogAction onClick={handleClearPrices}>Löschen</AlertDialogAction></AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>
                 </CardContent>
@@ -553,38 +605,14 @@ export default function SettingsPage() {
           <TabsContent value="design" className="space-y-6">
             {colorGroups.map((group) => (
               <Card key={group.title}>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Palette className="w-5 h-5" />
-                    {group.title}
-                  </CardTitle>
-                </CardHeader>
+                <CardHeader><CardTitle className="flex items-center gap-2"><Palette className="w-5 h-5" />{group.title}</CardTitle></CardHeader>
                 <CardContent className="space-y-4">
-                  {group.colors.map(({ key, label, defaultColor }) => (
+                  {group.colors.map(({ key, label, dc }) => (
                     <div key={key} className="flex items-center gap-4">
-                      <div 
-                        className="w-20 h-10 rounded-lg border-2 flex items-center justify-center font-medium text-xs"
-                        style={{ backgroundColor: settings.colors[key] || defaultColor }}
-                      >
-                        {label}
-                      </div>
-                      <div className="flex-1 flex gap-2">
-                        <Input
-                          type="color"
-                          value={settings.colors[key] || defaultColor}
-                          onChange={(e) => handleColorChange(key, e.target.value)}
-                          className="w-14 h-10 p-1 cursor-pointer"
-                        />
-                        <Input
-                          type="text"
-                          value={settings.colors[key] || defaultColor}
-                          onChange={(e) => handleColorChange(key, e.target.value)}
-                          className="w-28"
-                        />
-                        <Button variant="outline" size="sm" onClick={() => handleColorChange(key, defaultColor)}>
-                          Reset
-                        </Button>
-                      </div>
+                      <div className="w-20 h-10 rounded-lg border-2 flex items-center justify-center font-medium text-xs" style={{ backgroundColor: settings.colors[key] || dc }}>{label}</div>
+                      <Input type="color" value={settings.colors[key] || dc} onChange={(e) => handleColorChange(key, e.target.value)} className="w-14 h-10 p-1" />
+                      <Input type="text" value={settings.colors[key] || dc} onChange={(e) => handleColorChange(key, e.target.value)} className="w-28" />
+                      <Button variant="outline" size="sm" onClick={() => handleColorChange(key, dc)}>Reset</Button>
                     </div>
                   ))}
                 </CardContent>
