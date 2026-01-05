@@ -147,13 +147,50 @@ export default function ReceiptPage() {
   return (
     <div className="min-h-screen bg-white" data-testid="receipt-page">
       {/* Controls */}
-      <div className="no-print fixed top-4 left-4 right-4 flex justify-between z-50">
-        <Link to="/"><Button variant="outline" size="sm"><ArrowLeft className="w-4 h-4 mr-2" />Zurück</Button></Link>
-        <Button onClick={handlePrint} size="lg" className="shadow-lg"><Printer className="w-5 h-5 mr-2" />Bon drucken</Button>
+      <div className="no-print fixed top-4 left-4 right-4 flex justify-between items-center z-50 gap-2">
+        <Link to="/history">
+          <Button variant="outline" size="sm">
+            <ArrowLeft className="w-4 h-4 mr-2" />Zurück
+          </Button>
+        </Link>
+        
+        <div className="flex gap-2">
+          {/* PDF Download */}
+          <Button 
+            variant="outline" 
+            onClick={handleDownloadPDF}
+            disabled={isPrinting}
+            size="lg"
+          >
+            <Download className="w-5 h-5 mr-2" />
+            PDF
+          </Button>
+          
+          {/* Browser Print */}
+          <Button 
+            variant="outline"
+            onClick={handlePrint} 
+            size="lg"
+          >
+            <Printer className="w-5 h-5 mr-2" />
+            Drucken
+          </Button>
+          
+          {/* Epson Direct */}
+          <Button 
+            onClick={handleEpsonPrint}
+            disabled={isPrinting}
+            size="lg" 
+            className="shadow-lg bg-blue-600 hover:bg-blue-700"
+          >
+            <Wifi className="w-5 h-5 mr-2" />
+            Epson
+          </Button>
+        </div>
       </div>
 
       {/* Receipt */}
-      <div className="print-area receipt-container">
+      <div className="print-area receipt-container" ref={receiptRef}>
         <div className="receipt-content">
           {/* Store Header */}
           {settings.show_store_name && (
