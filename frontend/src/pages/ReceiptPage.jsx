@@ -166,177 +166,121 @@ export default function ReceiptPage() {
       </div>
 
       <style>{`
-        /* Screen preview - matches 80mm width */
+        /* Screen preview - 80mm thermal receipt style */
         .receipt-container {
-          width: 80mm;
-          max-width: 80mm;
+          width: 302px; /* 80mm at 96dpi */
+          max-width: 302px;
           margin: 80px auto 40px;
-          padding: 3mm 4mm;
-          font-family: 'Courier New', monospace;
-          font-size: 12pt;
+          padding: 12px 15px;
+          font-family: 'Courier New', Courier, monospace;
+          font-size: 14px;
           line-height: 1.4;
           background: white;
           box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
         .receipt-content { text-align: center; }
-        .store-name { font-weight: bold; margin-bottom: 5px; }
-        .store-info { font-size: 12px; color: #666; }
-        .receipt-divider { font-size: 12px; color: #999; margin: 10px 0; letter-spacing: -1px; }
-        .receipt-title { font-weight: bold; letter-spacing: 2px; margin: 10px 0 5px; }
-        .receipt-date { font-size: 12px; color: #666; }
-        .receipt-id { font-size: 11px; color: #999; margin-bottom: 10px; }
+        .store-name { font-weight: bold; margin-bottom: 5px; font-size: 18px; }
+        .store-info { font-size: 13px; color: #333; }
+        .receipt-divider { font-size: 12px; color: #666; margin: 10px 0; letter-spacing: -1px; }
+        .receipt-title { font-weight: bold; letter-spacing: 2px; margin: 10px 0 5px; font-size: 16px; }
+        .receipt-date { font-size: 13px; color: #333; }
+        .receipt-id { font-size: 12px; color: #666; margin-bottom: 10px; }
         .receipt-items { text-align: left; }
-        .receipt-item { margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px dashed #ddd; }
+        .receipt-item { margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px dashed #999; }
         .receipt-item:last-child { border-bottom: none; }
-        .item-name { font-weight: bold; }
-        .item-details { font-size: 11px; color: #666; }
-        .item-price { font-weight: bold; text-align: right; margin-top: 4px; }
-        .receipt-summary { text-align: left; font-size: 12px; }
+        .item-name { font-weight: bold; font-size: 14px; }
+        .item-details { font-size: 12px; color: #333; }
+        .item-price { font-weight: bold; text-align: right; margin-top: 4px; font-size: 14px; }
+        .receipt-summary { text-align: left; font-size: 13px; }
         .summary-row { display: flex; justify-content: space-between; }
-        .receipt-total { display: flex; justify-content: space-between; font-weight: bold; padding: 10px 0; }
-        .receipt-footer { margin-top: 15px; }
-        .receipt-small { font-size: 10px; color: #999; margin-top: 5px; }
+        .receipt-total { display: flex; justify-content: space-between; font-weight: bold; padding: 10px 0; font-size: 18px; }
+        .receipt-footer { margin-top: 15px; font-size: 12px; }
+        .receipt-small { font-size: 11px; color: #666; margin-top: 5px; }
         .receipt-spacer { height: 30px; }
 
-        /* 80mm Thermal Printer - Full Width */
+        /* 80mm Thermal Printer Styles */
         @media print {
           @page { 
-            size: 80mm auto; 
-            margin: 0 !important; 
-            padding: 0 !important;
-          }
-          
-          * { 
-            -webkit-print-color-adjust: exact !important; 
-            print-color-adjust: exact !important;
-            box-sizing: border-box;
+            size: 80mm 297mm;
+            margin: 0mm;
           }
           
           html, body { 
-            width: 80mm !important;
-            min-width: 80mm !important;
-            max-width: 80mm !important;
-            margin: 0 !important; 
-            padding: 0 !important;
-            font-size: 12pt;
+            width: 80mm;
+            margin: 0;
+            padding: 0;
+            background: white;
           }
           
-          .no-print { display: none !important; }
+          .no-print { 
+            display: none !important; 
+          }
           
           .receipt-container { 
-            width: 80mm !important;
-            min-width: 80mm !important;
-            max-width: 80mm !important;
-            margin: 0 !important; 
-            padding: 3mm 4mm !important;
-            box-shadow: none !important;
-            font-size: 12pt;
-            transform: none !important;
-          }
-          
-          .receipt-content {
-            width: 100% !important;
-            text-align: center;
+            width: 100%;
+            max-width: 100%;
+            margin: 0;
+            padding: 2mm 3mm;
+            box-shadow: none;
+            page-break-inside: avoid;
           }
           
           .store-name { 
-            font-size: 16pt !important;
-            font-weight: bold;
-            margin-bottom: 2mm;
+            font-size: 5mm !important;
           }
           
           .store-info { 
-            font-size: 11pt !important;
-            color: #000;
-            line-height: 1.4;
+            font-size: 3.5mm !important;
+            color: black;
           }
           
           .receipt-divider { 
-            font-size: 11pt;
-            margin: 3mm 0;
-            color: #000;
-            width: 100%;
+            font-size: 3mm;
+            margin: 2mm 0;
+            color: black;
           }
           
           .receipt-title { 
-            font-size: 14pt !important;
-            font-weight: bold;
-            margin: 3mm 0 2mm;
+            font-size: 4.5mm !important;
           }
           
-          .receipt-date { 
-            font-size: 11pt !important;
-            color: #000;
-          }
-          
-          .receipt-id { 
-            font-size: 10pt !important;
-            color: #000;
-            margin-bottom: 2mm;
-          }
-          
-          .receipt-items {
-            text-align: left;
-            width: 100%;
-          }
-          
-          .receipt-item { 
-            margin-bottom: 3mm;
-            padding-bottom: 2mm;
-            border-bottom: 1px dashed #000;
-            width: 100%;
+          .receipt-date, .receipt-id { 
+            font-size: 3.5mm !important;
+            color: black;
           }
           
           .item-name { 
-            font-size: 12pt !important;
-            font-weight: bold;
+            font-size: 4mm !important;
           }
           
           .item-details { 
-            font-size: 10pt !important;
-            color: #000;
+            font-size: 3mm !important;
+            color: black;
           }
           
           .item-price { 
-            font-size: 12pt !important;
-            font-weight: bold;
-            text-align: right;
+            font-size: 4mm !important;
           }
           
           .receipt-summary {
-            font-size: 11pt;
-            width: 100%;
-          }
-          
-          .summary-row {
-            display: flex;
-            justify-content: space-between;
-            width: 100%;
+            font-size: 3.5mm;
           }
           
           .receipt-total { 
-            font-size: 16pt !important;
-            font-weight: bold;
-            padding: 3mm 0;
-            display: flex;
-            justify-content: space-between;
-            width: 100%;
+            font-size: 5mm !important;
           }
           
           .receipt-footer { 
-            font-size: 10pt !important;
-            margin-top: 3mm;
-            text-align: center;
+            font-size: 3mm !important;
           }
           
           .receipt-small { 
-            font-size: 9pt !important;
-            color: #000;
-            margin-top: 2mm;
+            font-size: 2.5mm !important;
+            color: black;
           }
           
           .receipt-spacer { 
-            height: 10mm;
+            height: 5mm;
           }
         }
       `}</style>
