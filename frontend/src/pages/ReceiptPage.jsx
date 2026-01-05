@@ -212,18 +212,18 @@ export default function ReceiptPage() {
             width: 80mm; 
             margin: 0; 
             padding: 0;
-            font-size: 12pt;
+            font-size: 24pt;
           }
           
           .no-print { display: none !important; }
           
           .receipt-container { 
-            width: 72mm;
-            max-width: 72mm; 
+            width: 76mm;
+            max-width: 76mm; 
             margin: 0 auto; 
-            padding: 2mm 4mm;
+            padding: 2mm;
             box-shadow: none;
-            font-size: 12pt;
+            font-size: 24pt;
           }
           
           .receipt-content {
@@ -231,70 +231,70 @@ export default function ReceiptPage() {
           }
           
           .store-name { 
-            font-size: 16pt !important;
+            font-size: 28pt !important;
             font-weight: bold;
-            margin-bottom: 2mm;
+            margin-bottom: 3mm;
           }
           
           .store-info { 
-            font-size: 10pt !important;
+            font-size: 18pt !important;
             color: #000;
-            line-height: 1.3;
+            line-height: 1.4;
           }
           
           .receipt-divider { 
-            font-size: 10pt;
-            margin: 3mm 0;
+            font-size: 16pt;
+            margin: 4mm 0;
             color: #000;
           }
           
           .receipt-title { 
-            font-size: 14pt !important;
+            font-size: 24pt !important;
             font-weight: bold;
-            margin: 3mm 0 2mm;
+            margin: 4mm 0 3mm;
             letter-spacing: 1px;
           }
           
           .receipt-date { 
-            font-size: 10pt !important;
+            font-size: 18pt !important;
             color: #000;
           }
           
           .receipt-id { 
-            font-size: 9pt !important;
+            font-size: 16pt !important;
             color: #333;
-            margin-bottom: 2mm;
+            margin-bottom: 3mm;
           }
           
           .receipt-items {
             text-align: left;
-            font-size: 11pt;
+            font-size: 20pt;
           }
           
           .receipt-item { 
-            margin-bottom: 3mm;
-            padding-bottom: 2mm;
+            margin-bottom: 4mm;
+            padding-bottom: 3mm;
             border-bottom: 1px dashed #000;
           }
           
           .item-name { 
-            font-size: 11pt !important;
+            font-size: 20pt !important;
             font-weight: bold;
           }
           
           .item-details { 
-            font-size: 9pt !important;
+            font-size: 16pt !important;
             color: #333;
           }
           
           .item-price { 
-            font-size: 11pt !important;
+            font-size: 20pt !important;
             font-weight: bold;
             text-align: right;
           }
           
           .receipt-summary {
-            font-size: 10pt;
+            font-size: 18pt;
           }
           
           .summary-row {
@@ -303,21 +303,21 @@ export default function ReceiptPage() {
           }
           
           .receipt-total { 
-            font-size: 16pt !important;
+            font-size: 28pt !important;
             font-weight: bold;
-            padding: 3mm 0;
+            padding: 4mm 0;
             display: flex;
             justify-content: space-between;
           }
           
           .receipt-footer { 
-            font-size: 10pt !important;
-            margin-top: 3mm;
+            font-size: 16pt !important;
+            margin-top: 4mm;
             text-align: center;
           }
           
           .receipt-small { 
-            font-size: 8pt !important;
+            font-size: 14pt !important;
             color: #333;
             margin-top: 2mm;
           }
