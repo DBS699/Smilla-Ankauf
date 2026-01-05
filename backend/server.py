@@ -99,7 +99,11 @@ class MonthlyStats(BaseModel):
 
 @api_router.get("/")
 async def root():
-    return {"message": "ReWear POS API"}
+    try:
+        await client.admin.command('ping')
+        return {"message": "ReWear POS API", "database_status": "connected"}
+    except Exception as e:
+        return {"message": "ReWear POS API", "database_status": "disconnected", "error": str(e)}
 
 @api_router.get("/categories")
 async def get_categories():
