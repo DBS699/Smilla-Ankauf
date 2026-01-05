@@ -166,12 +166,14 @@ export default function ReceiptPage() {
       </div>
 
       <style>{`
+        /* Screen preview - matches 80mm width */
         .receipt-container {
-          max-width: 320px;
+          width: 80mm;
+          max-width: 80mm;
           margin: 80px auto 40px;
-          padding: 20px;
+          padding: 3mm 4mm;
           font-family: 'Courier New', monospace;
-          font-size: 14px;
+          font-size: 12pt;
           line-height: 1.4;
           background: white;
           box-shadow: 0 2px 10px rgba(0,0,0,0.1);
