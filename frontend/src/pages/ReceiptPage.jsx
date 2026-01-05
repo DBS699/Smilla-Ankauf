@@ -70,6 +70,63 @@ export default function ReceiptPage() {
 
   const handlePrint = () => window.print();
 
+  // PDF Download - 80mm width
+  const handleDownloadPDF = async () => {
+    if (!receiptRef.current) return;
+    
+    setIsPrinting(true);
+    try {
+      const opt = {
+        margin: 0,
+        filename: `Quittung_${purchase.id.slice(0, 8)}.pdf`,
+        image: { type: 'jpeg', quality: 1 },
+        html2canvas: { 
+          scale: 2,
+          useCORS: true,
+          width: 302, // 80mm at 96dpi
+        },
+        jsPDF: { 
+          unit: 'mm', 
+          format: [80, 200], // 80mm width, auto height
+          orientation: 'portrait'
+        }
+      };
+      
+      await html2pdf().set(opt).from(receiptRef.current).save();
+      toast.success('PDF heruntergeladen!');
+    } catch (error) {
+      console.error('PDF error:', error);
+      toast.error('PDF-Fehler');
+    } finally {
+      setIsPrinting(false);
+    }
+  };
+
+  // Epson Direct Print via ePOS SDK
+  const handleEpsonPrint = async () => {
+    setIsPrinting(true);
+    try {
+      // Check if Epson ePOS SDK is available
+      if (typeof window.epson !== 'undefined' && window.epson.ePOSDevice) {
+        // Epson SDK is loaded - use it
+        const ePosDev = new window.epson.ePOSDevice();
+        // Connect to printer (needs to be configured with printer IP)
+        toast.info('Verbinde mit Epson Drucker...');
+        // This would need printer IP configuration
+        toast.error('Bitte Drucker-IP in Einstellungen konfigurieren');
+      } else {
+        // Fallback: Open print dialog with receipt-optimized settings
+        toast.info('Epson SDK nicht geladen - verwende Browser-Druck');
+        window.print();
+      }
+    } catch (error) {
+      console.error('Epson print error:', error);
+      toast.error('Druckfehler');
+    } finally {
+      setIsPrinting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
