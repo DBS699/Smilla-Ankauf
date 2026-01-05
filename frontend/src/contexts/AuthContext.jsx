@@ -10,8 +10,13 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     // Check for saved session
     const savedUser = localStorage.getItem('rewear_user');
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
+    try {
+      if (savedUser) {
+        setUser(JSON.parse(savedUser));
+      }
+    } catch (e) {
+      console.error("Failed to parse user from local storage", e);
+      localStorage.removeItem('rewear_user');
     }
     setLoading(false);
   }, []);
