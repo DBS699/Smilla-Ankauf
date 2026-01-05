@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Printer } from 'lucide-react';
+import { ArrowLeft, Printer, Download, Wifi } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 import api from '@/lib/api';
+import html2pdf from 'html2pdf.js';
 
 const DEFAULT_RECEIPT_SETTINGS = {
   store_name: "Smillå-Store GmbH",
