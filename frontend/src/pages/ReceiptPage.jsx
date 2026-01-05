@@ -34,6 +34,8 @@ export default function ReceiptPage() {
   const [purchase, setPurchase] = useState(null);
   const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState(DEFAULT_RECEIPT_SETTINGS);
+  const [isPrinting, setIsPrinting] = useState(false);
+  const receiptRef = useRef(null);
 
   useEffect(() => {
     loadData();
