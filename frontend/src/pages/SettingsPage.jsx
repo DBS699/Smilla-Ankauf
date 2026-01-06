@@ -536,7 +536,7 @@ export default function SettingsPage() {
               </div>
             </div>
           </TabsContent>
-
+          )}
 
           {/* Brands Tab */}
           <TabsContent value="brands" className="space-y-6">
