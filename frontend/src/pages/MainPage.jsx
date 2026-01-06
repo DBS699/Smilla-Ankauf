@@ -4,7 +4,7 @@ import {
   Shirt, Layers, Ruler, Briefcase, Scissors, 
   Dumbbell, Waves, ShoppingBag, Trash2, History, 
   Plus, X, Check, Settings, Zap, HelpCircle, ExternalLink, LogOut, User,
-  Crown, Star, Heart, Sparkles, Gem, Gift, Tag, Minus, Sun, Moon
+  Crown, Star, Heart, Sparkles, Gem, Gift, Tag, Minus, Sun, Moon, Info
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -13,10 +13,19 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Slider } from '@/components/ui/slider';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import { CATEGORIES, PRICE_LEVELS, CONDITIONS, RELEVANCE_LEVELS } from '@/lib/constants';
 import { useAuth } from '@/contexts/AuthContext';
 import api from '@/lib/api';
+
+// Default brand examples for price levels
+const DEFAULT_BRAND_EXAMPLES = {
+  luxus: ['Gucci', 'Prada', 'Louis Vuitton', 'Chanel', 'Hermès'],
+  teuer: ['Hugo Boss', 'Tommy Hilfiger', 'Ralph Lauren', 'Calvin Klein', 'Lacoste'],
+  mittel: ['Zara', 'H&M Premium', 'Mango', 'COS', 'Massimo Dutti'],
+  guenstig: ['H&M', 'Primark', 'C&A', 'Takko', 'KiK']
+};
 
 // Icon mapping
 const iconMap = {
