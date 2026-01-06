@@ -1,7 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Printer, Download, Wifi } from 'lucide-react';
+import { ArrowLeft, Printer, Download, Wifi, Settings2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Slider } from '@/components/ui/slider';
+import { Label } from '@/components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { toast } from 'sonner';
 import api from '@/lib/api';
 import html2pdf from 'html2pdf.js';
@@ -35,6 +38,8 @@ export default function ReceiptPage() {
   const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState(DEFAULT_RECEIPT_SETTINGS);
   const [isPrinting, setIsPrinting] = useState(false);
+  const [receiptWidth, setReceiptWidth] = useState(80); // mm
+  const [receiptScale, setReceiptScale] = useState(100); // %
   const receiptRef = useRef(null);
 
   useEffect(() => {
