@@ -75,6 +75,7 @@ export default function MainPage() {
   const [categoryIcons, setCategoryIcons] = useState({});
   const [hiddenCategories, setHiddenCategories] = useState([]);
   const [darkMode, setDarkMode] = useState(false);
+  const [brandExamples, setBrandExamples] = useState(DEFAULT_BRAND_EXAMPLES);
 
   useEffect(() => {
     loadTodayStats();
