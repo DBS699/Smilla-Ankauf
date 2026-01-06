@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { 
-  Shirt, Layers, Ruler, Briefcase, Scissors, 
-  Dumbbell, Waves, ShoppingBag, Trash2, History, 
+import {
+  Shirt, Layers, Ruler, Briefcase, Scissors,
+  Dumbbell, Waves, ShoppingBag, Trash2, History,
   Plus, X, Check, Settings, Zap, HelpCircle, ExternalLink, LogOut, User,
   Crown, Star, Heart, Sparkles, Gem, Gift, Tag, Minus, Sun, Moon, Info
 } from 'lucide-react';
@@ -139,16 +139,16 @@ export default function MainPage() {
   // Combine default and custom categories, filter out hidden ones
   const allCategories = [
     ...CATEGORIES.filter(cat => !hiddenCategories.includes(cat.name)),
-    ...customCategories.map(cat => ({ 
-      id: cat.name.toLowerCase().replace(/\s+/g, '_'), 
-      name: cat.name, 
+    ...customCategories.map(cat => ({
+      id: cat.name.toLowerCase().replace(/\s+/g, '_'),
+      name: cat.name,
       icon: categoryIcons[cat.name] || 'Shirt',
       image: cat.image || null
     }))
   ];
 
   // Find longest category name for button width
-  const longestCategoryName = allCategories.reduce((longest, cat) => 
+  const longestCategoryName = allCategories.reduce((longest, cat) =>
     cat.name.length > longest.length ? cat.name : longest, ''
   );
 
@@ -184,8 +184,9 @@ export default function MainPage() {
 
   const handleRelevanceSelect = async (relevance) => {
     setSelectedRelevance(relevance);
+    setDialogStep(4); // Immediate transition
     setIsCheckingPrice(true);
-    
+
     try {
       const result = await api.lookupFixedPrice(
         selectedCategory.name,
@@ -193,7 +194,7 @@ export default function MainPage() {
         selectedCondition.name,
         relevance.name
       );
-      
+
       if (result.found && result.fixed_price !== null) {
         setFixedPrice(result.fixed_price);
         setPrice(result.fixed_price.toString());
@@ -206,7 +207,6 @@ export default function MainPage() {
       setFixedPrice(null);
     } finally {
       setIsCheckingPrice(false);
-      setDialogStep(4);
     }
   };
 
@@ -250,7 +250,7 @@ export default function MainPage() {
 
   const handleQuickAdd = () => {
     if (fixedPrice === null) return;
-    
+
     const newItem = {
       id: Date.now().toString(),
       category: selectedCategory.name,
@@ -297,7 +297,7 @@ export default function MainPage() {
       setCart([]);
       loadTodayStats();
       setIsMobileCartOpen(false);
-      
+
       setTimeout(() => {
         window.open(`/receipt/${purchase.id}`, '_blank');
       }, 100);
@@ -323,9 +323,9 @@ export default function MainPage() {
           Warenkorb
         </h2>
         {cart.length > 0 && (
-          <Button 
-            variant="ghost" 
-            size="sm" 
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={clearCart}
             className="text-destructive hover:text-destructive"
             data-testid="clear-cart-btn"
@@ -345,8 +345,8 @@ export default function MainPage() {
         ) : (
           <div className="space-y-3">
             {cart.map((item, index) => (
-              <div 
-                key={item.id} 
+              <div
+                key={item.id}
                 className="cart-item bg-muted/50 rounded-lg p-3 flex justify-between items-start"
                 data-testid={`cart-item-${index}`}
               >
@@ -368,9 +368,9 @@ export default function MainPage() {
                   <span className="font-display font-bold text-lg">
                     CHF {item.price.toFixed(2)}
                   </span>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     className="h-8 w-8 text-muted-foreground hover:text-destructive"
                     onClick={() => removeFromCart(item.id)}
                     data-testid={`remove-item-${index}`}
@@ -391,7 +391,7 @@ export default function MainPage() {
             CHF {cartTotal.toFixed(2)}
           </span>
         </div>
-        <Button 
+        <Button
           className="w-full h-14 text-lg touch-btn"
           disabled={cart.length === 0 || isSubmitting}
           onClick={handleCheckout}
@@ -419,7 +419,7 @@ export default function MainPage() {
             <h1 className="text-lg sm:text-xl font-bold text-primary truncate">ReWear POS</h1>
             <p className="text-xs sm:text-sm text-muted-foreground hidden xs:block">Ankaufs-System</p>
           </div>
-          
+
           <div className="flex items-center gap-2 sm:gap-4">
             <div className="hidden md:flex items-center gap-6 text-sm">
               <div className="text-center">
@@ -437,9 +437,9 @@ export default function MainPage() {
             </div>
 
             {/* Dark/Light Mode Toggle */}
-            <Button 
-              variant="outline" 
-              size="icon" 
+            <Button
+              variant="outline"
+              size="icon"
               className="hidden sm:flex"
               onClick={toggleDarkMode}
               data-testid="dark-mode-btn"
@@ -519,9 +519,9 @@ export default function MainPage() {
                     data-testid={`category-${category.id}`}
                   >
                     {category.image ? (
-                      <img 
-                        src={category.image} 
-                        alt={category.name} 
+                      <img
+                        src={category.image}
+                        alt={category.name}
                         className="w-8 h-8 sm:w-12 sm:h-12 mb-1 sm:mb-2 rounded-lg object-cover"
                       />
                     ) : (
@@ -579,7 +579,7 @@ export default function MainPage() {
                           <p className="text-xs text-gray-600">{level.description}</p>
                         </div>
                       </Button>
-                      
+
                       {/* Brand Examples Tooltip */}
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -599,7 +599,7 @@ export default function MainPage() {
                     </div>
                   ))}
                 </TooltipProvider>
-                
+
                 {/* Unsicher Button */}
                 <Button
                   variant="outline"
@@ -632,8 +632,8 @@ export default function MainPage() {
                     </Button>
                   ))}
                 </div>
-                <Button 
-                  variant="ghost" 
+                <Button
+                  variant="ghost"
                   className="w-full mt-4"
                   onClick={() => setDialogStep(1)}
                 >
@@ -661,8 +661,8 @@ export default function MainPage() {
                     </div>
                   </Button>
                 ))}
-                <Button 
-                  variant="ghost" 
+                <Button
+                  variant="ghost"
                   className="w-full mt-4"
                   onClick={() => setDialogStep(2)}
                 >
@@ -684,7 +684,7 @@ export default function MainPage() {
                       <p className="text-sm text-muted-foreground mb-2">
                         {selectedLevel?.name} • {selectedCondition?.name} • {selectedRelevance?.name}
                       </p>
-                      
+
                       {fixedPrice !== null ? (
                         <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
                           <p className="text-sm text-amber-800 mb-2 flex items-center justify-center gap-1">
@@ -694,7 +694,7 @@ export default function MainPage() {
                           <p className="font-display text-4xl font-bold text-amber-900">
                             CHF {fixedPrice.toFixed(2)}
                           </p>
-                          <Button 
+                          <Button
                             className="mt-4 w-full h-12 bg-amber-600 hover:bg-amber-700"
                             onClick={handleQuickAdd}
                             data-testid="quick-add-btn"
@@ -711,12 +711,12 @@ export default function MainPage() {
                           Preis mit Slider oder Buttons wählen:
                         </p>
                       )}
-                      
+
                       {/* Price Display */}
                       <div className="font-display text-5xl font-bold mb-4" data-testid="price-display">
                         CHF {(parseFloat(price) || 0).toFixed(2)}
                       </div>
-                      
+
                       {/* Vertical Price Slider with +/- buttons */}
                       <div className="flex items-center justify-center gap-6 mb-4">
                         {/* Minus buttons */}
@@ -740,7 +740,7 @@ export default function MainPage() {
                             <Minus className="w-6 h-6" />
                           </Button>
                         </div>
-                        
+
                         {/* Vertical Slider - optimized for 0-30 range */}
                         <div className="flex flex-col items-center h-48">
                           <span className="text-xs text-muted-foreground mb-2">30</span>
@@ -758,7 +758,7 @@ export default function MainPage() {
                           </div>
                           <span className="text-xs text-muted-foreground mt-2">0</span>
                         </div>
-                        
+
                         {/* Plus buttons */}
                         <div className="flex flex-col gap-2">
                           <Button
@@ -817,14 +817,14 @@ export default function MainPage() {
                     </div>
 
                     <div className="flex gap-3 pt-2">
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         className="flex-1 h-12"
                         onClick={() => setDialogStep(3)}
                       >
                         Zurück
                       </Button>
-                      <Button 
+                      <Button
                         className="flex-1 h-12"
                         onClick={handleAddToCart}
                         disabled={!price || parseFloat(price) <= 0}
