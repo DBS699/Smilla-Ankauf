@@ -60,8 +60,17 @@ export default function SettingsPage() {
       neu: '#D1FAE5', kaum_benutzt: '#E0F2FE', gebraucht: '#FED7AA', abgenutzt: '#FECACA',
       stark_relevant: '#DDD6FE', wichtig: '#CFFAFE', nicht_beliebt: '#F3F4F6'
     },
-    hidden_categories: []
+    hidden_categories: [],
+    brand_examples: {
+      luxus: ['Gucci', 'Prada', 'Louis Vuitton', 'Chanel', 'Hermès'],
+      teuer: ['Hugo Boss', 'Tommy Hilfiger', 'Ralph Lauren', 'Calvin Klein', 'Lacoste'],
+      mittel: ['Zara', 'H&M Premium', 'Mango', 'COS', 'Massimo Dutti'],
+      guenstig: ['H&M', 'Primark', 'C&A', 'Takko', 'KiK']
+    }
   });
+
+  // Brand examples editing
+  const [newBrand, setNewBrand] = useState({ luxus: '', teuer: '', mittel: '', guenstig: '' });
 
   // Receipt settings
   const [receiptSettings, setReceiptSettings] = useState(DEFAULT_RECEIPT);
