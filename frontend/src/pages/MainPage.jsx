@@ -564,21 +564,41 @@ export default function MainPage() {
             {dialogStep === 1 && (
               <div className="space-y-3 animate-slide-up">
                 <p className="text-sm text-muted-foreground mb-4">Preisniveau wählen</p>
-                {PRICE_LEVELS.map((level) => (
-                  <Button
-                    key={level.id}
-                    variant="outline"
-                    className="w-full h-14 justify-start text-left level-btn border-2"
-                    style={{ backgroundColor: getColor(level.id), borderColor: getColor(level.id) }}
-                    onClick={() => handleLevelSelect(level)}
-                    data-testid={`level-${level.id}`}
-                  >
-                    <div>
-                      <p className="font-semibold text-gray-800">{level.name}</p>
-                      <p className="text-xs text-gray-600">{level.description}</p>
+                <TooltipProvider delayDuration={200}>
+                  {PRICE_LEVELS.map((level) => (
+                    <div key={level.id} className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        className="flex-1 h-14 justify-start text-left level-btn border-2"
+                        style={{ backgroundColor: getColor(level.id), borderColor: getColor(level.id) }}
+                        onClick={() => handleLevelSelect(level)}
+                        data-testid={`level-${level.id}`}
+                      >
+                        <div>
+                          <p className="font-semibold text-gray-800">{level.name}</p>
+                          <p className="text-xs text-gray-600">{level.description}</p>
+                        </div>
+                      </Button>
+                      
+                      {/* Brand Examples Tooltip */}
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0">
+                            <Info className="w-4 h-4 text-muted-foreground" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="right" className="max-w-[200px]">
+                          <p className="font-semibold mb-1">{level.name} - Beispiele:</p>
+                          <ul className="text-sm">
+                            {(brandExamples[level.id] || []).map((brand, i) => (
+                              <li key={i}>• {brand}</li>
+                            ))}
+                          </ul>
+                        </TooltipContent>
+                      </Tooltip>
                     </div>
-                  </Button>
-                ))}
+                  ))}
+                </TooltipProvider>
                 
                 {/* Unsicher Button */}
                 <Button
