@@ -117,6 +117,9 @@ export default function MainPage() {
       if (settings?.darkMode !== undefined) {
         setDarkMode(settings.darkMode);
       }
+      if (settings?.brand_examples) {
+        setBrandExamples({ ...DEFAULT_BRAND_EXAMPLES, ...settings.brand_examples });
+      }
     } catch (error) {
       console.error('Failed to load settings:', error);
     }
