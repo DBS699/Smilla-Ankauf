@@ -162,7 +162,66 @@ export default function ReceiptPage() {
           </Button>
         </Link>
         
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
+          {/* Format Settings Popover */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="lg">
+                <Settings2 className="w-5 h-5 mr-2" />
+                Format
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-72" align="end">
+              <div className="space-y-4">
+                <h4 className="font-medium">Druckformat anpassen</h4>
+                
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <Label>Breite</Label>
+                    <span className="text-sm font-mono">{receiptWidth}mm</span>
+                  </div>
+                  <Slider
+                    value={[receiptWidth]}
+                    onValueChange={(v) => setReceiptWidth(v[0])}
+                    min={50}
+                    max={120}
+                    step={5}
+                  />
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>50mm</span>
+                    <span>80mm</span>
+                    <span>120mm</span>
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <Label>Skalierung</Label>
+                    <span className="text-sm font-mono">{receiptScale}%</span>
+                  </div>
+                  <Slider
+                    value={[receiptScale]}
+                    onValueChange={(v) => setReceiptScale(v[0])}
+                    min={50}
+                    max={200}
+                    step={10}
+                  />
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>50%</span>
+                    <span>100%</span>
+                    <span>200%</span>
+                  </div>
+                </div>
+                
+                <div className="pt-2 border-t">
+                  <p className="text-xs text-muted-foreground">
+                    Standard: 80mm Breite, 100% Skalierung
+                  </p>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+          
           {/* PDF Download */}
           <Button 
             variant="outline" 
@@ -197,8 +256,17 @@ export default function ReceiptPage() {
         </div>
       </div>
 
-      {/* Receipt */}
-      <div className="print-area receipt-container" ref={receiptRef}>
+      {/* Receipt with dynamic width */}
+      <div 
+        className="print-area receipt-container" 
+        ref={receiptRef}
+        style={{ 
+          width: `${receiptWidth}mm`,
+          maxWidth: `${receiptWidth}mm`,
+          transform: `scale(${receiptScale / 100})`,
+          transformOrigin: 'top center'
+        }}
+      >
         <div className="receipt-content">
           {/* Store Header */}
           {settings.show_store_name && (
