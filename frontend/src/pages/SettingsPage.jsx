@@ -679,7 +679,8 @@ export default function SettingsPage() {
             </Card>
           </TabsContent>
 
-          {/* Prices Tab */}
+          {/* Prices Tab - Admin Only */}
+          {isAdmin && (
           <TabsContent value="prices" className="space-y-6">
             <div className="grid gap-4 md:grid-cols-2">
               <Card className="cursor-pointer hover:border-primary" onClick={handleDownload}>
