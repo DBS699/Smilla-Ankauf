@@ -75,12 +75,15 @@ export default function ReceiptPage() {
 
   const handlePrint = () => window.print();
 
-  // PDF Download - 80mm width
+  // PDF Download - custom width
   const handleDownloadPDF = async () => {
     if (!receiptRef.current) return;
     
     setIsPrinting(true);
     try {
+      const scaleFactor = receiptScale / 100;
+      const widthPx = (receiptWidth / 25.4) * 96 * scaleFactor; // mm to px at 96dpi
+      
       const opt = {
         margin: 0,
         filename: `Quittung_${purchase.id.slice(0, 8)}.pdf`,
@@ -88,17 +91,17 @@ export default function ReceiptPage() {
         html2canvas: { 
           scale: 2,
           useCORS: true,
-          width: 302, // 80mm at 96dpi
+          width: widthPx,
         },
         jsPDF: { 
           unit: 'mm', 
-          format: [80, 200], // 80mm width, auto height
+          format: [receiptWidth, 297], 
           orientation: 'portrait'
         }
       };
       
       await html2pdf().set(opt).from(receiptRef.current).save();
-      toast.success('PDF heruntergeladen!');
+      toast.success(`PDF (${receiptWidth}mm) heruntergeladen!`);
     } catch (error) {
       console.error('PDF error:', error);
       toast.error('PDF-Fehler');
