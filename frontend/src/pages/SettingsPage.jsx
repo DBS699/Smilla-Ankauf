@@ -339,6 +339,7 @@ export default function SettingsPage() {
         <Tabs defaultValue="receipt" className="space-y-6">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="receipt">Quittung</TabsTrigger>
+            <TabsTrigger value="brands">Marken</TabsTrigger>
             <TabsTrigger value="categories">Kategorien</TabsTrigger>
             <TabsTrigger value="prices">Preismatrix</TabsTrigger>
             <TabsTrigger value="design">Design</TabsTrigger>
