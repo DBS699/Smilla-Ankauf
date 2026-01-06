@@ -336,16 +336,17 @@ export default function SettingsPage() {
       </header>
 
       <div className="container mx-auto px-4 py-6 max-w-6xl">
-        <Tabs defaultValue="receipt" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="receipt">Quittung</TabsTrigger>
+        <Tabs defaultValue={isAdmin ? "receipt" : "brands"} className="space-y-6">
+          <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-5' : 'grid-cols-2'}`}>
+            {isAdmin && <TabsTrigger value="receipt">Quittung</TabsTrigger>}
             <TabsTrigger value="brands">Marken</TabsTrigger>
             <TabsTrigger value="categories">Kategorien</TabsTrigger>
-            <TabsTrigger value="prices">Preismatrix</TabsTrigger>
-            <TabsTrigger value="design">Design</TabsTrigger>
+            {isAdmin && <TabsTrigger value="prices">Preismatrix</TabsTrigger>}
+            {isAdmin && <TabsTrigger value="design">Design</TabsTrigger>}
           </TabsList>
 
-          {/* Receipt Tab */}
+          {/* Receipt Tab - Admin Only */}
+          {isAdmin && (
           <TabsContent value="receipt" className="space-y-6">
             <div className="grid lg:grid-cols-2 gap-6">
               {/* Left: Controls */}
