@@ -92,7 +92,8 @@ export default function SettingsPage() {
           ...prev,
           ...settingsData,
           colors: { ...prev.colors, ...settingsData.colors },
-          hidden_categories: settingsData.hidden_categories || []
+          hidden_categories: settingsData.hidden_categories || [],
+          brand_examples: { ...prev.brand_examples, ...settingsData.brand_examples }
         }));
       }
       if (receiptData) {
@@ -100,6 +101,45 @@ export default function SettingsPage() {
       }
     } catch (error) {
       console.error('Failed to load data:', error);
+    }
+  };
+
+  // Add brand to a price level
+  const addBrand = async (level) => {
+    if (!newBrand[level].trim()) return;
+    
+    const updatedBrands = {
+      ...settings.brand_examples,
+      [level]: [...(settings.brand_examples[level] || []), newBrand[level].trim()]
+    };
+    
+    const newSettings = { ...settings, brand_examples: updatedBrands };
+    setSettings(newSettings);
+    setNewBrand(prev => ({ ...prev, [level]: '' }));
+    
+    try {
+      await api.updateSettings(newSettings);
+      toast.success('Marke hinzugefügt');
+    } catch (error) {
+      toast.error('Fehler beim Speichern');
+    }
+  };
+
+  // Remove brand from a price level
+  const removeBrand = async (level, brand) => {
+    const updatedBrands = {
+      ...settings.brand_examples,
+      [level]: (settings.brand_examples[level] || []).filter(b => b !== brand)
+    };
+    
+    const newSettings = { ...settings, brand_examples: updatedBrands };
+    setSettings(newSettings);
+    
+    try {
+      await api.updateSettings(newSettings);
+      toast.success('Marke entfernt');
+    } catch (error) {
+      toast.error('Fehler beim Speichern');
     }
   };
 
