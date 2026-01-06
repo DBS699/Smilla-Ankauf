@@ -722,8 +722,10 @@ export default function SettingsPage() {
               </Card>
             )}
           </TabsContent>
+          )}
 
-          {/* Design Tab */}
+          {/* Design Tab - Admin Only */}
+          {isAdmin && (
           <TabsContent value="design" className="space-y-6">
             {colorGroups.map((group) => (
               <Card key={group.title}>
