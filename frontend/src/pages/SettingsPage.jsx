@@ -1,6 +1,15 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Download, Upload, Trash2, FileSpreadsheet, CheckCircle, AlertCircle, Plus, X, Palette, Shield, Image, Camera, Eye, EyeOff, RotateCcw, FileText, Type } from 'lucide-react';
+import {
+  Shirt, Layers, Ruler, Briefcase, Scissors, Dumbbell, Waves, ShoppingBag,
+  Tag, Gift, Crown, Star, Heart, Sparkles, Gem, Sun, Moon,
+  Umbrella, CloudRain, Snowflake, Ghost, Coffee, Watch, Glasses,
+  Backpack, Palette as PaletteIcon, Trophy, Flame, Smile, MoveVertical,
+  Laptop, Smartphone, Headphones, Bike, Car, Home, Key, Book, Music,
+  Baby, Dog, Cat, Plane, Hammer, Wrench, Utensils
+} from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -37,6 +46,17 @@ const DEFAULT_RECEIPT = {
   font_size_items: 12,
   font_size_total: 20,
   font_size_footer: 12
+  font_size_footer: 12
+};
+
+// Icon map for picker
+const iconMap = {
+  Shirt, Layers, Ruler, Briefcase, Scissors, Dumbbell, Waves, ShoppingBag,
+  Tag, Gift, Crown, Star, Heart, Sparkles, Gem, Sun, Moon,
+  Umbrella, CloudRain, Snowflake, Ghost, Coffee, Watch, Glasses,
+  Backpack, Palette: PaletteIcon, Trophy, Flame, Smile, MoveVertical,
+  Laptop, Smartphone, Headphones, Bike, Car, Home, Key, Book, Music,
+  Baby, Dog, Cat, Plane, Hammer, Wrench, Utensils
 };
 
 export default function SettingsPage() {
@@ -45,14 +65,15 @@ export default function SettingsPage() {
   const [isDownloading, setIsDownloading] = useState(false);
   const [uploadResult, setUploadResult] = useState(null);
   const fileInputRef = useRef(null);
-  
+
   // Custom categories
   const [customCategories, setCustomCategories] = useState([]);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [newCategoryImage, setNewCategoryImage] = useState(null);
+  const [newCategoryIcon, setNewCategoryIcon] = useState(null);
   const [isAddingCategory, setIsAddingCategory] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
-  
+
   // Settings
   const [settings, setSettings] = useState({
     colors: {
@@ -107,16 +128,16 @@ export default function SettingsPage() {
   // Add brand to a price level
   const addBrand = async (level) => {
     if (!newBrand[level].trim()) return;
-    
+
     const updatedBrands = {
       ...settings.brand_examples,
       [level]: [...(settings.brand_examples[level] || []), newBrand[level].trim()]
     };
-    
+
     const newSettings = { ...settings, brand_examples: updatedBrands };
     setSettings(newSettings);
     setNewBrand(prev => ({ ...prev, [level]: '' }));
-    
+
     try {
       await api.updateSettings(newSettings);
       toast.success('Marke hinzugefügt');
@@ -131,10 +152,10 @@ export default function SettingsPage() {
       ...settings.brand_examples,
       [level]: (settings.brand_examples[level] || []).filter(b => b !== brand)
     };
-    
+
     const newSettings = { ...settings, brand_examples: updatedBrands };
     setSettings(newSettings);
-    
+
     try {
       await api.updateSettings(newSettings);
       toast.success('Marke entfernt');
@@ -147,7 +168,7 @@ export default function SettingsPage() {
   const updateReceiptSetting = async (key, value) => {
     const newSettings = { ...receiptSettings, [key]: value };
     setReceiptSettings(newSettings);
-    
+
     // Debounce save
     clearTimeout(window.receiptSaveTimeout);
     window.receiptSaveTimeout = setTimeout(async () => {
@@ -233,10 +254,11 @@ export default function SettingsPage() {
     if (!newCategoryName.trim()) return toast.error('Name erforderlich');
     setIsAddingCategory(true);
     try {
-      await api.addCustomCategory(newCategoryName.trim(), newCategoryImage);
+      await api.addCustomCategory(newCategoryName.trim(), newCategoryImage, newCategoryIcon);
       toast.success(`"${newCategoryName}" hinzugefügt`);
       setNewCategoryName('');
       setNewCategoryImage(null);
+      setNewCategoryIcon(null);
       loadData();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Fehler');
@@ -272,49 +294,55 @@ export default function SettingsPage() {
     setSettings(prev => ({ ...prev, colors: newColors }));
     try {
       await api.updateSettings({ ...settings, colors: newColors });
-    } catch (error) {}
+    } catch (error) { }
   };
 
   const toggleCategoryVisibility = async (name) => {
     const isHidden = settings.hidden_categories.includes(name);
-    const newHidden = isHidden 
+    const newHidden = isHidden
       ? settings.hidden_categories.filter(c => c !== name)
       : [...settings.hidden_categories, name];
     setSettings(prev => ({ ...prev, hidden_categories: newHidden }));
     try {
       await api.updateSettings({ ...settings, hidden_categories: newHidden });
-    } catch (error) {}
+    } catch (error) { }
   };
 
   const hideAllStandardCategories = async () => {
     const all = CATEGORIES.map(c => c.name);
     setSettings(prev => ({ ...prev, hidden_categories: all }));
-    try { await api.updateSettings({ ...settings, hidden_categories: all }); } catch {}
+    try { await api.updateSettings({ ...settings, hidden_categories: all }); } catch { }
   };
 
   const showAllStandardCategories = async () => {
     setSettings(prev => ({ ...prev, hidden_categories: [] }));
-    try { await api.updateSettings({ ...settings, hidden_categories: [] }); } catch {}
+    try { await api.updateSettings({ ...settings, hidden_categories: [] }); } catch { }
   };
 
   const colorGroups = [
-    { title: 'Preisniveau', colors: [
-      { key: 'luxus', label: 'Luxus', dc: '#FEF3C7' },
-      { key: 'teuer', label: 'Teuer', dc: '#DBEAFE' },
-      { key: 'mittel', label: 'Mittel', dc: '#D1FAE5' },
-      { key: 'guenstig', label: 'Günstig', dc: '#F1F5F9' }
-    ]},
-    { title: 'Zustand', colors: [
-      { key: 'neu', label: 'Neu', dc: '#D1FAE5' },
-      { key: 'kaum_benutzt', label: 'Kaum benutzt', dc: '#E0F2FE' },
-      { key: 'gebraucht', label: 'Gebraucht', dc: '#FED7AA' },
-      { key: 'abgenutzt', label: 'Abgenutzt', dc: '#FECACA' }
-    ]},
-    { title: 'Relevanz', colors: [
-      { key: 'stark_relevant', label: 'Stark relevant', dc: '#DDD6FE' },
-      { key: 'wichtig', label: 'Wichtig', dc: '#CFFAFE' },
-      { key: 'nicht_beliebt', label: 'Nicht beliebt', dc: '#F3F4F6' }
-    ]}
+    {
+      title: 'Preisniveau', colors: [
+        { key: 'luxus', label: 'Luxus', dc: '#FEF3C7' },
+        { key: 'teuer', label: 'Teuer', dc: '#DBEAFE' },
+        { key: 'mittel', label: 'Mittel', dc: '#D1FAE5' },
+        { key: 'guenstig', label: 'Günstig', dc: '#F1F5F9' }
+      ]
+    },
+    {
+      title: 'Zustand', colors: [
+        { key: 'neu', label: 'Neu', dc: '#D1FAE5' },
+        { key: 'kaum_benutzt', label: 'Kaum benutzt', dc: '#E0F2FE' },
+        { key: 'gebraucht', label: 'Gebraucht', dc: '#FED7AA' },
+        { key: 'abgenutzt', label: 'Abgenutzt', dc: '#FECACA' }
+      ]
+    },
+    {
+      title: 'Relevanz', colors: [
+        { key: 'stark_relevant', label: 'Stark relevant', dc: '#DDD6FE' },
+        { key: 'wichtig', label: 'Wichtig', dc: '#CFFAFE' },
+        { key: 'nicht_beliebt', label: 'Nicht beliebt', dc: '#F3F4F6' }
+      ]
+    }
   ];
 
   // Sample receipt data for preview
@@ -347,195 +375,195 @@ export default function SettingsPage() {
 
           {/* Receipt Tab - Admin Only */}
           {isAdmin() && (
-          <TabsContent value="receipt" className="space-y-6">
-            <div className="grid lg:grid-cols-2 gap-6">
-              {/* Left: Controls */}
-              <div className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Type className="w-5 h-5" />
-                      Texte bearbeiten
-                    </CardTitle>
-                    <CardDescription>Klicke auf die Vorschau rechts oder bearbeite hier</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <Label>Firmenname</Label>
-                      <Input value={receiptSettings.store_name} onChange={(e) => updateReceiptSetting('store_name', e.target.value)} />
-                    </div>
-                    <div>
-                      <Label>Adresse</Label>
-                      <Input value={receiptSettings.store_address} onChange={(e) => updateReceiptSetting('store_address', e.target.value)} />
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
+            <TabsContent value="receipt" className="space-y-6">
+              <div className="grid lg:grid-cols-2 gap-6">
+                {/* Left: Controls */}
+                <div className="space-y-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Type className="w-5 h-5" />
+                        Texte bearbeiten
+                      </CardTitle>
+                      <CardDescription>Klicke auf die Vorschau rechts oder bearbeite hier</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
                       <div>
-                        <Label>Stadt</Label>
-                        <Input value={receiptSettings.store_city} onChange={(e) => updateReceiptSetting('store_city', e.target.value)} />
+                        <Label>Firmenname</Label>
+                        <Input value={receiptSettings.store_name} onChange={(e) => updateReceiptSetting('store_name', e.target.value)} />
                       </div>
                       <div>
-                        <Label>Telefon</Label>
-                        <Input value={receiptSettings.store_phone} onChange={(e) => updateReceiptSetting('store_phone', e.target.value)} />
+                        <Label>Adresse</Label>
+                        <Input value={receiptSettings.store_address} onChange={(e) => updateReceiptSetting('store_address', e.target.value)} />
                       </div>
-                    </div>
-                    <div>
-                      <Label>Fusszeile</Label>
-                      <Input value={receiptSettings.footer_text} onChange={(e) => updateReceiptSetting('footer_text', e.target.value)} />
-                    </div>
-                    <div>
-                      <Label>Kleine Fusszeile</Label>
-                      <Input value={receiptSettings.sub_footer_text} onChange={(e) => updateReceiptSetting('sub_footer_text', e.target.value)} />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Schriftgrössen</CardTitle>
-                    <CardDescription>Ziehe die Slider - Änderungen sind sofort sichtbar</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    {[
-                      { key: 'font_size_store', label: 'Firmenname', min: 12, max: 28 },
-                      { key: 'font_size_title', label: 'Titel (ANKAUFSQUITTUNG)', min: 10, max: 24 },
-                      { key: 'font_size_items', label: 'Artikel', min: 8, max: 18 },
-                      { key: 'font_size_total', label: 'Total', min: 14, max: 32 },
-                      { key: 'font_size_footer', label: 'Fusszeile', min: 8, max: 16 },
-                    ].map(({ key, label, min, max }) => (
-                      <div key={key}>
-                        <div className="flex justify-between mb-2">
-                          <Label>{label}</Label>
-                          <span className="text-sm font-mono bg-muted px-2 py-0.5 rounded">{receiptSettings[key]}px</span>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label>Stadt</Label>
+                          <Input value={receiptSettings.store_city} onChange={(e) => updateReceiptSetting('store_city', e.target.value)} />
                         </div>
-                        <Slider
-                          value={[receiptSettings[key]]}
-                          onValueChange={([val]) => updateReceiptSetting(key, val)}
-                          min={min}
-                          max={max}
-                          step={1}
-                        />
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Elemente anzeigen</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    {[
-                      { key: 'show_store_name', label: 'Firmenname' },
-                      { key: 'show_address', label: 'Adresse & Stadt' },
-                      { key: 'show_phone', label: 'Telefon' },
-                      { key: 'show_date', label: 'Datum & Zeit' },
-                      { key: 'show_receipt_id', label: 'Quittungs-Nr.' },
-                      { key: 'show_item_details', label: 'Artikel-Details (Niveau/Zustand)' },
-                      { key: 'show_relevance', label: 'Relevanz' },
-                      { key: 'show_item_count', label: 'Anzahl Artikel' },
-                      { key: 'show_footer', label: 'Fusszeile' },
-                    ].map(({ key, label }) => (
-                      <div key={key} className="flex items-center justify-between">
-                        <Label>{label}</Label>
-                        <Switch checked={receiptSettings[key]} onCheckedChange={(v) => updateReceiptSetting(key, v)} />
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
-
-                <Button variant="outline" onClick={resetReceiptSettings} className="w-full">
-                  <RotateCcw className="w-4 h-4 mr-2" />
-                  Auf Standard zurücksetzen
-                </Button>
-              </div>
-
-              {/* Right: Live Preview */}
-              <div className="lg:sticky lg:top-24 lg:self-start">
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="flex items-center gap-2">
-                      <FileText className="w-5 h-5" />
-                      Live-Vorschau
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="bg-white border rounded-lg p-4 font-mono text-center max-w-[320px] mx-auto shadow-inner">
-                      {/* Store Header */}
-                      {receiptSettings.show_store_name && (
-                        <div style={{ fontSize: receiptSettings.font_size_store }} className="font-bold mb-1">
-                          {receiptSettings.store_name}
+                        <div>
+                          <Label>Telefon</Label>
+                          <Input value={receiptSettings.store_phone} onChange={(e) => updateReceiptSetting('store_phone', e.target.value)} />
                         </div>
-                      )}
-                      {receiptSettings.show_address && (
-                        <>
-                          <div className="text-xs text-gray-600">{receiptSettings.store_address}</div>
-                          <div className="text-xs text-gray-600">{receiptSettings.store_city}</div>
-                        </>
-                      )}
-                      {receiptSettings.show_phone && (
-                        <div className="text-xs text-gray-600">{receiptSettings.store_phone}</div>
-                      )}
-
-                      <div className="text-xs text-gray-400 my-2">================================</div>
-
-                      <div style={{ fontSize: receiptSettings.font_size_title }} className="font-bold tracking-wider">
-                        ANKAUFSQUITTUNG
                       </div>
-                      {receiptSettings.show_date && (
-                        <div className="text-xs text-gray-600">03.01.2026 14:30</div>
-                      )}
-                      {receiptSettings.show_receipt_id && (
-                        <div className="text-xs text-gray-400">Nr. A1B2C3D4</div>
-                      )}
+                      <div>
+                        <Label>Fusszeile</Label>
+                        <Input value={receiptSettings.footer_text} onChange={(e) => updateReceiptSetting('footer_text', e.target.value)} />
+                      </div>
+                      <div>
+                        <Label>Kleine Fusszeile</Label>
+                        <Input value={receiptSettings.sub_footer_text} onChange={(e) => updateReceiptSetting('sub_footer_text', e.target.value)} />
+                      </div>
+                    </CardContent>
+                  </Card>
 
-                      <div className="text-xs text-gray-400 my-2">--------------------------------</div>
-
-                      {/* Items */}
-                      <div className="text-left" style={{ fontSize: receiptSettings.font_size_items }}>
-                        {sampleItems.map((item, i) => (
-                          <div key={i} className="mb-2 pb-2 border-b border-dashed border-gray-200 last:border-0">
-                            <div className="font-bold">{item.category}</div>
-                            {receiptSettings.show_item_details && (
-                              <div className="text-xs text-gray-500">{item.price_level} / {item.condition}</div>
-                            )}
-                            {receiptSettings.show_relevance && (
-                              <div className="text-xs text-gray-500">{item.relevance}</div>
-                            )}
-                            <div className="text-right font-bold">CHF {item.price.toFixed(2)}</div>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Schriftgrössen</CardTitle>
+                      <CardDescription>Ziehe die Slider - Änderungen sind sofort sichtbar</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      {[
+                        { key: 'font_size_store', label: 'Firmenname', min: 12, max: 28 },
+                        { key: 'font_size_title', label: 'Titel (ANKAUFSQUITTUNG)', min: 10, max: 24 },
+                        { key: 'font_size_items', label: 'Artikel', min: 8, max: 18 },
+                        { key: 'font_size_total', label: 'Total', min: 14, max: 32 },
+                        { key: 'font_size_footer', label: 'Fusszeile', min: 8, max: 16 },
+                      ].map(({ key, label, min, max }) => (
+                        <div key={key}>
+                          <div className="flex justify-between mb-2">
+                            <Label>{label}</Label>
+                            <span className="text-sm font-mono bg-muted px-2 py-0.5 rounded">{receiptSettings[key]}px</span>
                           </div>
-                        ))}
-                      </div>
-
-                      <div className="text-xs text-gray-400 my-2">--------------------------------</div>
-
-                      {receiptSettings.show_item_count && (
-                        <div className="flex justify-between text-xs mb-1">
-                          <span>Artikel:</span>
-                          <span>{sampleItems.length}</span>
+                          <Slider
+                            value={[receiptSettings[key]]}
+                            onValueChange={([val]) => updateReceiptSetting(key, val)}
+                            min={min}
+                            max={max}
+                            step={1}
+                          />
                         </div>
-                      )}
+                      ))}
+                    </CardContent>
+                  </Card>
 
-                      <div className="text-xs text-gray-400 my-2">================================</div>
-
-                      <div className="flex justify-between font-bold" style={{ fontSize: receiptSettings.font_size_total }}>
-                        <span>TOTAL</span>
-                        <span>CHF {sampleItems.reduce((s, i) => s + i.price, 0).toFixed(2)}</span>
-                      </div>
-
-                      <div className="text-xs text-gray-400 my-2">================================</div>
-
-                      {receiptSettings.show_footer && (
-                        <div style={{ fontSize: receiptSettings.font_size_footer }}>
-                          <div>{receiptSettings.footer_text}</div>
-                          <div className="text-xs text-gray-400 mt-1">{receiptSettings.sub_footer_text}</div>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Elemente anzeigen</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {[
+                        { key: 'show_store_name', label: 'Firmenname' },
+                        { key: 'show_address', label: 'Adresse & Stadt' },
+                        { key: 'show_phone', label: 'Telefon' },
+                        { key: 'show_date', label: 'Datum & Zeit' },
+                        { key: 'show_receipt_id', label: 'Quittungs-Nr.' },
+                        { key: 'show_item_details', label: 'Artikel-Details (Niveau/Zustand)' },
+                        { key: 'show_relevance', label: 'Relevanz' },
+                        { key: 'show_item_count', label: 'Anzahl Artikel' },
+                        { key: 'show_footer', label: 'Fusszeile' },
+                      ].map(({ key, label }) => (
+                        <div key={key} className="flex items-center justify-between">
+                          <Label>{label}</Label>
+                          <Switch checked={receiptSettings[key]} onCheckedChange={(v) => updateReceiptSetting(key, v)} />
                         </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
+                      ))}
+                    </CardContent>
+                  </Card>
+
+                  <Button variant="outline" onClick={resetReceiptSettings} className="w-full">
+                    <RotateCcw className="w-4 h-4 mr-2" />
+                    Auf Standard zurücksetzen
+                  </Button>
+                </div>
+
+                {/* Right: Live Preview */}
+                <div className="lg:sticky lg:top-24 lg:self-start">
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="flex items-center gap-2">
+                        <FileText className="w-5 h-5" />
+                        Live-Vorschau
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="bg-white border rounded-lg p-4 font-mono text-center max-w-[320px] mx-auto shadow-inner">
+                        {/* Store Header */}
+                        {receiptSettings.show_store_name && (
+                          <div style={{ fontSize: receiptSettings.font_size_store }} className="font-bold mb-1">
+                            {receiptSettings.store_name}
+                          </div>
+                        )}
+                        {receiptSettings.show_address && (
+                          <>
+                            <div className="text-xs text-gray-600">{receiptSettings.store_address}</div>
+                            <div className="text-xs text-gray-600">{receiptSettings.store_city}</div>
+                          </>
+                        )}
+                        {receiptSettings.show_phone && (
+                          <div className="text-xs text-gray-600">{receiptSettings.store_phone}</div>
+                        )}
+
+                        <div className="text-xs text-gray-400 my-2">================================</div>
+
+                        <div style={{ fontSize: receiptSettings.font_size_title }} className="font-bold tracking-wider">
+                          ANKAUFSQUITTUNG
+                        </div>
+                        {receiptSettings.show_date && (
+                          <div className="text-xs text-gray-600">03.01.2026 14:30</div>
+                        )}
+                        {receiptSettings.show_receipt_id && (
+                          <div className="text-xs text-gray-400">Nr. A1B2C3D4</div>
+                        )}
+
+                        <div className="text-xs text-gray-400 my-2">--------------------------------</div>
+
+                        {/* Items */}
+                        <div className="text-left" style={{ fontSize: receiptSettings.font_size_items }}>
+                          {sampleItems.map((item, i) => (
+                            <div key={i} className="mb-2 pb-2 border-b border-dashed border-gray-200 last:border-0">
+                              <div className="font-bold">{item.category}</div>
+                              {receiptSettings.show_item_details && (
+                                <div className="text-xs text-gray-500">{item.price_level} / {item.condition}</div>
+                              )}
+                              {receiptSettings.show_relevance && (
+                                <div className="text-xs text-gray-500">{item.relevance}</div>
+                              )}
+                              <div className="text-right font-bold">CHF {item.price.toFixed(2)}</div>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className="text-xs text-gray-400 my-2">--------------------------------</div>
+
+                        {receiptSettings.show_item_count && (
+                          <div className="flex justify-between text-xs mb-1">
+                            <span>Artikel:</span>
+                            <span>{sampleItems.length}</span>
+                          </div>
+                        )}
+
+                        <div className="text-xs text-gray-400 my-2">================================</div>
+
+                        <div className="flex justify-between font-bold" style={{ fontSize: receiptSettings.font_size_total }}>
+                          <span>TOTAL</span>
+                          <span>CHF {sampleItems.reduce((s, i) => s + i.price, 0).toFixed(2)}</span>
+                        </div>
+
+                        <div className="text-xs text-gray-400 my-2">================================</div>
+
+                        {receiptSettings.show_footer && (
+                          <div style={{ fontSize: receiptSettings.font_size_footer }}>
+                            <div>{receiptSettings.footer_text}</div>
+                            <div className="text-xs text-gray-400 mt-1">{receiptSettings.sub_footer_text}</div>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
               </div>
-            </div>
-          </TabsContent>
+            </TabsContent>
           )}
 
           {/* Brands Tab */}
@@ -562,11 +590,11 @@ export default function SettingsPage() {
                       <div className="w-4 h-4 rounded" style={{ backgroundColor: level.color }} />
                       {level.name}
                     </Label>
-                    
+
                     {/* Current brands */}
                     <div className="flex flex-wrap gap-2">
                       {(settings.brand_examples[level.id] || []).map((brand, idx) => (
-                        <div 
+                        <div
                           key={idx}
                           className="flex items-center gap-1 px-2 py-1 bg-muted rounded-md text-sm"
                         >
@@ -582,7 +610,7 @@ export default function SettingsPage() {
                         </div>
                       ))}
                     </div>
-                    
+
                     {/* Add new brand */}
                     <div className="flex gap-2">
                       <Input
@@ -592,8 +620,8 @@ export default function SettingsPage() {
                         onKeyDown={(e) => e.key === 'Enter' && addBrand(level.id)}
                         className="flex-1"
                       />
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         size="icon"
                         onClick={() => addBrand(level.id)}
                         disabled={!newBrand[level.id]?.trim()}
@@ -648,8 +676,46 @@ export default function SettingsPage() {
                     <Label>Name</Label>
                     <Input placeholder="z.B. Accessoires" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} />
                   </div>
+
+                  {/* Icon Selector */}
                   <div>
-                    <Label>Bild</Label>
+                    <Label>Icon (Optional)</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" size="icon" className="w-10 h-10">
+                          {newCategoryIcon ? (
+                            (() => {
+                              const I = iconMap[newCategoryIcon];
+                              return I ? <I className="w-5 h-5" /> : <Smile className="w-5 h-5" />;
+                            })()
+                          ) : (
+                            <Smile className="w-5 h-5 text-muted-foreground" />
+                          )}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-64 p-2">
+                        <div className="grid grid-cols-5 gap-2">
+                          {Object.keys(iconMap).map((iconName) => {
+                            const IconComp = iconMap[iconName];
+                            return (
+                              <Button
+                                key={iconName}
+                                variant={newCategoryIcon === iconName ? "default" : "ghost"}
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => setNewCategoryIcon(iconName)}
+                              >
+                                <IconComp className="w-4 h-4" />
+                              </Button>
+                            );
+                          })}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+
+                  <div>
+                    <Label>Bild (Optional)</Label>
                     {newCategoryImage ? (
                       <div className="relative w-10 h-10">
                         <img src={newCategoryImage} alt="" className="w-10 h-10 rounded object-cover" />
@@ -681,68 +747,68 @@ export default function SettingsPage() {
 
           {/* Prices Tab - Admin Only */}
           {isAdmin() && (
-          <TabsContent value="prices" className="space-y-6">
-            <div className="grid gap-4 md:grid-cols-2">
-              <Card className="cursor-pointer hover:border-primary" onClick={handleDownload}>
-                <CardContent className="p-6 flex flex-col items-center">
-                  <Download className="w-12 h-12 text-emerald-600 mb-3" />
-                  <h3 className="font-semibold">Excel herunterladen</h3>
-                  <Button className="mt-4" disabled={isDownloading}>{isDownloading ? 'Lädt...' : 'Download'}</Button>
-                </CardContent>
-              </Card>
-              <Card className="cursor-pointer hover:border-primary" onClick={handleUploadClick}>
-                <CardContent className="p-6 flex flex-col items-center">
-                  <Upload className="w-12 h-12 text-blue-600 mb-3" />
-                  <h3 className="font-semibold">Excel hochladen</h3>
-                  <Button className="mt-4" disabled={isUploading}>{isUploading ? 'Lädt...' : 'Hochladen'}</Button>
-                  <input type="file" ref={fileInputRef} className="hidden" accept=".xlsx,.xls" onChange={handleFileChange} />
-                </CardContent>
-              </Card>
-            </div>
-            {uploadResult && (
-              <Card className={uploadResult.success ? 'border-emerald-300 bg-emerald-50' : 'border-red-300 bg-red-50'}>
-                <CardContent className="p-4 flex items-center gap-3">
-                  {uploadResult.success ? <CheckCircle className="w-6 h-6 text-emerald-600" /> : <AlertCircle className="w-6 h-6 text-red-600" />}
-                  <p className="font-medium">{uploadResult.message}</p>
-                </CardContent>
-              </Card>
-            )}
-            {isAdmin() && (
-              <Card className="border-red-200">
-                <CardHeader><CardTitle className="text-red-600 flex items-center gap-2"><Shield className="w-5 h-5" />Gefahrenzone</CardTitle></CardHeader>
-                <CardContent>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild><Button variant="destructive"><Trash2 className="w-4 h-4 mr-2" />Alle Fixpreise löschen</Button></AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader><AlertDialogTitle>Alle löschen?</AlertDialogTitle></AlertDialogHeader>
-                      <AlertDialogFooter><AlertDialogCancel>Abbrechen</AlertDialogCancel><AlertDialogAction onClick={handleClearPrices}>Löschen</AlertDialogAction></AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
+            <TabsContent value="prices" className="space-y-6">
+              <div className="grid gap-4 md:grid-cols-2">
+                <Card className="cursor-pointer hover:border-primary" onClick={handleDownload}>
+                  <CardContent className="p-6 flex flex-col items-center">
+                    <Download className="w-12 h-12 text-emerald-600 mb-3" />
+                    <h3 className="font-semibold">Excel herunterladen</h3>
+                    <Button className="mt-4" disabled={isDownloading}>{isDownloading ? 'Lädt...' : 'Download'}</Button>
+                  </CardContent>
+                </Card>
+                <Card className="cursor-pointer hover:border-primary" onClick={handleUploadClick}>
+                  <CardContent className="p-6 flex flex-col items-center">
+                    <Upload className="w-12 h-12 text-blue-600 mb-3" />
+                    <h3 className="font-semibold">Excel hochladen</h3>
+                    <Button className="mt-4" disabled={isUploading}>{isUploading ? 'Lädt...' : 'Hochladen'}</Button>
+                    <input type="file" ref={fileInputRef} className="hidden" accept=".xlsx,.xls" onChange={handleFileChange} />
+                  </CardContent>
+                </Card>
+              </div>
+              {uploadResult && (
+                <Card className={uploadResult.success ? 'border-emerald-300 bg-emerald-50' : 'border-red-300 bg-red-50'}>
+                  <CardContent className="p-4 flex items-center gap-3">
+                    {uploadResult.success ? <CheckCircle className="w-6 h-6 text-emerald-600" /> : <AlertCircle className="w-6 h-6 text-red-600" />}
+                    <p className="font-medium">{uploadResult.message}</p>
+                  </CardContent>
+                </Card>
+              )}
+              {isAdmin() && (
+                <Card className="border-red-200">
+                  <CardHeader><CardTitle className="text-red-600 flex items-center gap-2"><Shield className="w-5 h-5" />Gefahrenzone</CardTitle></CardHeader>
+                  <CardContent>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild><Button variant="destructive"><Trash2 className="w-4 h-4 mr-2" />Alle Fixpreise löschen</Button></AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader><AlertDialogTitle>Alle löschen?</AlertDialogTitle></AlertDialogHeader>
+                        <AlertDialogFooter><AlertDialogCancel>Abbrechen</AlertDialogCancel><AlertDialogAction onClick={handleClearPrices}>Löschen</AlertDialogAction></AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
           )}
 
           {/* Design Tab - Admin Only */}
           {isAdmin() && (
-          <TabsContent value="design" className="space-y-6">
-            {colorGroups.map((group) => (
-              <Card key={group.title}>
-                <CardHeader><CardTitle className="flex items-center gap-2"><Palette className="w-5 h-5" />{group.title}</CardTitle></CardHeader>
-                <CardContent className="space-y-4">
-                  {group.colors.map(({ key, label, dc }) => (
-                    <div key={key} className="flex items-center gap-4">
-                      <div className="w-20 h-10 rounded-lg border-2 flex items-center justify-center font-medium text-xs" style={{ backgroundColor: settings.colors[key] || dc }}>{label}</div>
-                      <Input type="color" value={settings.colors[key] || dc} onChange={(e) => handleColorChange(key, e.target.value)} className="w-14 h-10 p-1" />
-                      <Input type="text" value={settings.colors[key] || dc} onChange={(e) => handleColorChange(key, e.target.value)} className="w-28" />
-                      <Button variant="outline" size="sm" onClick={() => handleColorChange(key, dc)}>Reset</Button>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            ))}
-          </TabsContent>
+            <TabsContent value="design" className="space-y-6">
+              {colorGroups.map((group) => (
+                <Card key={group.title}>
+                  <CardHeader><CardTitle className="flex items-center gap-2"><Palette className="w-5 h-5" />{group.title}</CardTitle></CardHeader>
+                  <CardContent className="space-y-4">
+                    {group.colors.map(({ key, label, dc }) => (
+                      <div key={key} className="flex items-center gap-4">
+                        <div className="w-20 h-10 rounded-lg border-2 flex items-center justify-center font-medium text-xs" style={{ backgroundColor: settings.colors[key] || dc }}>{label}</div>
+                        <Input type="color" value={settings.colors[key] || dc} onChange={(e) => handleColorChange(key, e.target.value)} className="w-14 h-10 p-1" />
+                        <Input type="text" value={settings.colors[key] || dc} onChange={(e) => handleColorChange(key, e.target.value)} className="w-28" />
+                        <Button variant="outline" size="sm" onClick={() => handleColorChange(key, dc)}>Reset</Button>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              ))}
+            </TabsContent>
           )}
         </Tabs>
       </div>

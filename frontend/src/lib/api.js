@@ -123,8 +123,8 @@ export const api = {
     return response.data;
   },
 
-  addCustomCategory: async (name, image = null) => {
-    const response = await apiClient.post('/custom-categories', { name, image });
+  addCustomCategory: async (name, image = null, icon = null) => {
+    const response = await apiClient.post('/custom-categories', { name, image, icon });
     return response.data;
   },
 
@@ -143,7 +143,7 @@ export const api = {
     const params = {};
     if (startDate) params.start_date = startDate;
     if (endDate) params.end_date = endDate;
-    
+
     const response = await axios.get(`${API}/purchases/export/excel`, {
       responseType: 'blob',
       params
@@ -151,14 +151,14 @@ export const api = {
     const url = window.URL.createObjectURL(new Blob([response.data]));
     const link = document.createElement('a');
     link.href = url;
-    
+
     // Include date range in filename if filtered
     let filename = 'ankaufe_export';
     if (startDate || endDate) {
       filename += `_${startDate || 'start'}_bis_${endDate || 'ende'}`;
     }
     filename += '.xlsx';
-    
+
     link.setAttribute('download', filename);
     document.body.appendChild(link);
     link.click();

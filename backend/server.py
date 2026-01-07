@@ -486,6 +486,7 @@ async def get_custom_categories():
 async def add_custom_category(data: dict):
     name = data.get("name", "").strip()
     image = data.get("image", None)  # Base64 image data
+    icon = data.get("icon", None)    # Icon name string
     
     if not name:
         raise HTTPException(status_code=400, detail="Name erforderlich")
@@ -496,7 +497,7 @@ async def add_custom_category(data: dict):
     if existing:
         raise HTTPException(status_code=400, detail="Kategorie existiert bereits")
     
-    await db.custom_categories.insert_one({"name": name, "image": image})
+    await db.custom_categories.insert_one({"name": name, "image": image, "icon": icon})
     return {"message": f"Kategorie '{name}' hinzugefügt"}
 
 @api_router.put("/custom-categories/{name}/image")

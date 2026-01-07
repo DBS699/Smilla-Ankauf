@@ -6,7 +6,9 @@ import {
   Plus, X, Check, Settings, Zap, HelpCircle, ExternalLink, LogOut, User,
   Crown, Star, Heart, Sparkles, Gem, Gift, Tag, Minus, Sun, Moon, Info,
   Umbrella, CloudRain, Snowflake, Ghost, Coffee, Camera, Watch, Glasses,
-  Backpack, Palette, Trophy, Flame, Smile, MoveVertical
+  Backpack, Palette, Trophy, Flame, Smile, MoveVertical,
+  Laptop, Smartphone, Headphones, Bike, Car, Home, Key, Book, Music,
+  Baby, Dog, Cat, Plane, Hammer, Wrench, Utensils
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -60,7 +62,10 @@ const iconMap = {
   // Generic Fallbacks
   Shirt, Layers, Ruler, Briefcase, Scissors, Dumbbell, Waves,
   Crown, Star, Heart, Sparkles, Gem, Gift, Tag, ShoppingBag,
-  Umbrella, CloudRain, Ghost, Watch, Backpack
+  Umbrella, CloudRain, Snowflake, Ghost, Coffee, Watch, Glasses,
+  Backpack, Palette, Trophy, Flame, Smile, MoveVertical,
+  Laptop, Smartphone, Headphones, Bike, Car, Home, Key, Book, Music,
+  Baby, Dog, Cat, Plane, Hammer, Wrench, Utensils
 };
 
 // Helper for dynamic lookup
