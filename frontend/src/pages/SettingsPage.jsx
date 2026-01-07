@@ -1,6 +1,14 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Smile } from 'lucide-react'; // Keep Smile for button default
+import { ArrowLeft, Download, Upload, Trash2, FileSpreadsheet, CheckCircle, AlertCircle, Plus, X, Palette, Shield, Image, Camera, Eye, EyeOff, RotateCcw, FileText, Type } from 'lucide-react';
+import {
+  Shirt, Layers, Ruler, Briefcase, Scissors, Dumbbell, Waves, ShoppingBag,
+  Tag, Gift, Crown, Star, Heart, Sparkles, Gem, Sun, Moon,
+  Umbrella, CloudRain, Snowflake, Ghost, Coffee, Watch, Glasses,
+  Backpack, Palette as PaletteIcon, Trophy, Flame, Smile, MoveVertical,
+  Laptop, Smartphone, Headphones, Bike, Car, Home, Key, Book, Music,
+  Baby, Dog, Cat, Plane, Hammer, Wrench, Utensils
+} from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,8 +23,6 @@ import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { CATEGORIES } from '@/lib/constants';
 import api from '@/lib/api';
-// Shared icons
-import { iconMap } from '@/lib/icons';
 
 // Default receipt settings
 const DEFAULT_RECEIPT = {
@@ -40,6 +46,16 @@ const DEFAULT_RECEIPT = {
   font_size_items: 12,
   font_size_total: 20,
   font_size_footer: 12
+};
+
+// Icon map for picker
+const iconMap = {
+  Shirt, Layers, Ruler, Briefcase, Scissors, Dumbbell, Waves, ShoppingBag,
+  Tag, Gift, Crown, Star, Heart, Sparkles, Gem, Sun, Moon,
+  Umbrella, CloudRain, Snowflake, Ghost, Coffee, Watch, Glasses,
+  Backpack, Palette: PaletteIcon, Trophy, Flame, Smile, MoveVertical,
+  Laptop, Smartphone, Headphones, Bike, Car, Home, Key, Book, Music,
+  Baby, Dog, Cat, Plane, Hammer, Wrench, Utensils
 };
 
 export default function SettingsPage() {
