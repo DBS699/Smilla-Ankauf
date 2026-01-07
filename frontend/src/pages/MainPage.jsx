@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
-  Sun, Moon // Keep toggle icons for dark mode button
+  Sun, Moon, Settings, History // Keep toggle icons for dark mode button
 } from 'lucide-react';
 import { getIcon } from '@/lib/icons';
 import { Button } from '@/components/ui/button';
