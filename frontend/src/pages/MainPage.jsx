@@ -183,7 +183,7 @@ export default function MainPage() {
     ...customCategories.map(cat => ({
       id: cat.name.toLowerCase().replace(/\s+/g, '_'),
       name: cat.name,
-      icon: categoryIcons[cat.name] || 'Shirt',
+      icon: cat.icon || categoryIcons[cat.name] || 'Shirt',
       image: cat.image || null
     }))
   ];
