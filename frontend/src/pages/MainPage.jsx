@@ -1,15 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
-  Shirt, Layers, Ruler, Briefcase, Scissors,
-  Dumbbell, Waves, ShoppingBag, Trash2, History,
-  Plus, X, Check, Settings, Zap, HelpCircle, ExternalLink, LogOut, User,
-  Crown, Star, Heart, Sparkles, Gem, Gift, Tag, Minus, Sun, Moon, Info,
-  Umbrella, CloudRain, Snowflake, Ghost, Coffee, Camera, Watch, Glasses,
-  Backpack, Palette, Trophy, Flame, Smile, MoveVertical,
-  Laptop, Smartphone, Headphones, Bike, Car, Home, Key, Book, Music,
-  Baby, Dog, Cat, Plane, Hammer, Wrench, Utensils
+  Sun, Moon // Keep toggle icons for dark mode button
 } from 'lucide-react';
+import { getIcon } from '@/lib/icons';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
