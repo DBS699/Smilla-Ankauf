@@ -17,7 +17,7 @@ import {
     GiWinterHat, GiRunningShoe, GiConverseShoe, GiHighHeel, GiBoots,
     GiZipper, GiBelt, GiNecklace, GiEarrings, GiSpectacles, GiHandBag,
     GiBackpack, GiSchoolBag, GiTopHat, GiBowTie, GiRolledCloth, GiClothesline,
-    GiHanger, GiSewingNeedle, GiThread, GiButtons, GiSonicShoes
+    GiHanger, GiSewingNeedle, GiSewingString, GiButtons, GiSonicShoes
 } from 'react-icons/gi';
 
 // Combined Icon Map
@@ -62,7 +62,7 @@ export const iconMap = {
     'Cloth': GiRolledCloth,
     'Hanger': GiHanger,
     'Needle': GiSewingNeedle,
-    'Thread': GiThread,
+    'Thread': GiSewingString,
     'Buttons': GiButtons,
     'Vintage': GiSonicShoes,
 
