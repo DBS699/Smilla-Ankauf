@@ -46,7 +46,6 @@ const DEFAULT_RECEIPT = {
   font_size_items: 12,
   font_size_total: 20,
   font_size_footer: 12
-  font_size_footer: 12
 };
 
 // Icon map for picker
