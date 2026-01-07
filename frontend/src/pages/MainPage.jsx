@@ -17,6 +17,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { toast } from 'sonner';
 import { CATEGORIES, PRICE_LEVELS, CONDITIONS, RELEVANCE_LEVELS } from '@/lib/constants';
 import { useAuth } from '@/contexts/AuthContext';
+import { useBackground } from '@/App';
 import api from '@/lib/api';
 
 // Default brand examples for price levels
@@ -57,6 +58,7 @@ const DEFAULT_COLORS = {
 
 export default function MainPage() {
   const { user, logout } = useAuth();
+  const { darkMode, setDarkMode } = useBackground();
   const navigate = useNavigate();
   const [cart, setCart] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null);
@@ -74,7 +76,7 @@ export default function MainPage() {
   const [colors, setColors] = useState(DEFAULT_COLORS);
   const [categoryIcons, setCategoryIcons] = useState({});
   const [hiddenCategories, setHiddenCategories] = useState([]);
-  const [darkMode, setDarkMode] = useState(false);
+
   const [brandExamples, setBrandExamples] = useState(DEFAULT_BRAND_EXAMPLES);
 
   useEffect(() => {
