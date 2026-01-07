@@ -60,8 +60,17 @@ export default function SettingsPage() {
       neu: '#D1FAE5', kaum_benutzt: '#E0F2FE', gebraucht: '#FED7AA', abgenutzt: '#FECACA',
       stark_relevant: '#DDD6FE', wichtig: '#CFFAFE', nicht_beliebt: '#F3F4F6'
     },
-    hidden_categories: []
+    hidden_categories: [],
+    brand_examples: {
+      luxus: ['Gucci', 'Prada', 'Louis Vuitton', 'Chanel', 'Hermès'],
+      teuer: ['Hugo Boss', 'Tommy Hilfiger', 'Ralph Lauren', 'Calvin Klein', 'Lacoste'],
+      mittel: ['Zara', 'H&M Premium', 'Mango', 'COS', 'Massimo Dutti'],
+      guenstig: ['H&M', 'Primark', 'C&A', 'Takko', 'KiK']
+    }
   });
+
+  // Brand examples editing
+  const [newBrand, setNewBrand] = useState({ luxus: '', teuer: '', mittel: '', guenstig: '' });
 
   // Receipt settings
   const [receiptSettings, setReceiptSettings] = useState(DEFAULT_RECEIPT);
@@ -83,7 +92,8 @@ export default function SettingsPage() {
           ...prev,
           ...settingsData,
           colors: { ...prev.colors, ...settingsData.colors },
-          hidden_categories: settingsData.hidden_categories || []
+          hidden_categories: settingsData.hidden_categories || [],
+          brand_examples: { ...prev.brand_examples, ...settingsData.brand_examples }
         }));
       }
       if (receiptData) {
@@ -91,6 +101,45 @@ export default function SettingsPage() {
       }
     } catch (error) {
       console.error('Failed to load data:', error);
+    }
+  };
+
+  // Add brand to a price level
+  const addBrand = async (level) => {
+    if (!newBrand[level].trim()) return;
+    
+    const updatedBrands = {
+      ...settings.brand_examples,
+      [level]: [...(settings.brand_examples[level] || []), newBrand[level].trim()]
+    };
+    
+    const newSettings = { ...settings, brand_examples: updatedBrands };
+    setSettings(newSettings);
+    setNewBrand(prev => ({ ...prev, [level]: '' }));
+    
+    try {
+      await api.updateSettings(newSettings);
+      toast.success('Marke hinzugefügt');
+    } catch (error) {
+      toast.error('Fehler beim Speichern');
+    }
+  };
+
+  // Remove brand from a price level
+  const removeBrand = async (level, brand) => {
+    const updatedBrands = {
+      ...settings.brand_examples,
+      [level]: (settings.brand_examples[level] || []).filter(b => b !== brand)
+    };
+    
+    const newSettings = { ...settings, brand_examples: updatedBrands };
+    setSettings(newSettings);
+    
+    try {
+      await api.updateSettings(newSettings);
+      toast.success('Marke entfernt');
+    } catch (error) {
+      toast.error('Fehler beim Speichern');
     }
   };
 
@@ -287,15 +336,17 @@ export default function SettingsPage() {
       </header>
 
       <div className="container mx-auto px-4 py-6 max-w-6xl">
-        <Tabs defaultValue="receipt" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="receipt">Quittung</TabsTrigger>
+        <Tabs defaultValue={isAdmin() ? "receipt" : "brands"} className="space-y-6">
+          <TabsList className={`grid w-full ${isAdmin() ? 'grid-cols-5' : 'grid-cols-2'}`}>
+            {isAdmin() && <TabsTrigger value="receipt">Quittung</TabsTrigger>}
+            <TabsTrigger value="brands">Marken</TabsTrigger>
             <TabsTrigger value="categories">Kategorien</TabsTrigger>
-            <TabsTrigger value="prices">Preismatrix</TabsTrigger>
-            <TabsTrigger value="design">Design</TabsTrigger>
+            {isAdmin() && <TabsTrigger value="prices">Preismatrix</TabsTrigger>}
+            {isAdmin() && <TabsTrigger value="design">Design</TabsTrigger>}
           </TabsList>
 
-          {/* Receipt Tab */}
+          {/* Receipt Tab - Admin Only */}
+          {isAdmin() && (
           <TabsContent value="receipt" className="space-y-6">
             <div className="grid lg:grid-cols-2 gap-6">
               {/* Left: Controls */}
@@ -485,6 +536,76 @@ export default function SettingsPage() {
               </div>
             </div>
           </TabsContent>
+          )}
+
+          {/* Brands Tab */}
+          <TabsContent value="brands" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="w-5 h-5" />
+                  Markenbeispiele nach Preisniveau
+                </CardTitle>
+                <CardDescription>
+                  Diese Marken werden als Beispiele beim Hover über das Info-Symbol bei der Preisniveau-Auswahl angezeigt.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {[
+                  { id: 'luxus', name: 'Luxus', color: '#FEF3C7' },
+                  { id: 'teuer', name: 'Teuer', color: '#DBEAFE' },
+                  { id: 'mittel', name: 'Mittel', color: '#D1FAE5' },
+                  { id: 'guenstig', name: 'Günstig', color: '#F1F5F9' }
+                ].map((level) => (
+                  <div key={level.id} className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded" style={{ backgroundColor: level.color }} />
+                      {level.name}
+                    </Label>
+                    
+                    {/* Current brands */}
+                    <div className="flex flex-wrap gap-2">
+                      {(settings.brand_examples[level.id] || []).map((brand, idx) => (
+                        <div 
+                          key={idx}
+                          className="flex items-center gap-1 px-2 py-1 bg-muted rounded-md text-sm"
+                        >
+                          <span>{brand}</span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-4 w-4 hover:bg-destructive hover:text-destructive-foreground"
+                            onClick={() => removeBrand(level.id, brand)}
+                          >
+                            <X className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    {/* Add new brand */}
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Neue Marke hinzufügen..."
+                        value={newBrand[level.id] || ''}
+                        onChange={(e) => setNewBrand(prev => ({ ...prev, [level.id]: e.target.value }))}
+                        onKeyDown={(e) => e.key === 'Enter' && addBrand(level.id)}
+                        className="flex-1"
+                      />
+                      <Button 
+                        variant="outline" 
+                        size="icon"
+                        onClick={() => addBrand(level.id)}
+                        disabled={!newBrand[level.id]?.trim()}
+                      >
+                        <Plus className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           {/* Categories Tab */}
           <TabsContent value="categories" className="space-y-6">
@@ -558,7 +679,8 @@ export default function SettingsPage() {
             </Card>
           </TabsContent>
 
-          {/* Prices Tab */}
+          {/* Prices Tab - Admin Only */}
+          {isAdmin() && (
           <TabsContent value="prices" className="space-y-6">
             <div className="grid gap-4 md:grid-cols-2">
               <Card className="cursor-pointer hover:border-primary" onClick={handleDownload}>
@@ -600,8 +722,10 @@ export default function SettingsPage() {
               </Card>
             )}
           </TabsContent>
+          )}
 
-          {/* Design Tab */}
+          {/* Design Tab - Admin Only */}
+          {isAdmin() && (
           <TabsContent value="design" className="space-y-6">
             {colorGroups.map((group) => (
               <Card key={group.title}>
@@ -619,6 +743,7 @@ export default function SettingsPage() {
               </Card>
             ))}
           </TabsContent>
+          )}
         </Tabs>
       </div>
     </div>

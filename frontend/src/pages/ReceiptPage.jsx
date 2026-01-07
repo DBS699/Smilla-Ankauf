@@ -1,8 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Printer } from 'lucide-react';
+import { ArrowLeft, Printer, Download, Wifi, Settings2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Slider } from '@/components/ui/slider';
+import { Label } from '@/components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { toast } from 'sonner';
 import api from '@/lib/api';
+import html2pdf from 'html2pdf.js';
 
 const DEFAULT_RECEIPT_SETTINGS = {
   store_name: "Smillå-Store GmbH",
@@ -32,6 +37,10 @@ export default function ReceiptPage() {
   const [purchase, setPurchase] = useState(null);
   const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState(DEFAULT_RECEIPT_SETTINGS);
+  const [isPrinting, setIsPrinting] = useState(false);
+  const [receiptWidth, setReceiptWidth] = useState(80); // mm
+  const [receiptScale, setReceiptScale] = useState(100); // %
+  const receiptRef = useRef(null);
 
   useEffect(() => {
     loadData();
@@ -66,6 +75,66 @@ export default function ReceiptPage() {
 
   const handlePrint = () => window.print();
 
+  // PDF Download - custom width
+  const handleDownloadPDF = async () => {
+    if (!receiptRef.current) return;
+    
+    setIsPrinting(true);
+    try {
+      const scaleFactor = receiptScale / 100;
+      const widthPx = (receiptWidth / 25.4) * 96 * scaleFactor; // mm to px at 96dpi
+      
+      const opt = {
+        margin: 0,
+        filename: `Quittung_${purchase.id.slice(0, 8)}.pdf`,
+        image: { type: 'jpeg', quality: 1 },
+        html2canvas: { 
+          scale: 2,
+          useCORS: true,
+          width: widthPx,
+        },
+        jsPDF: { 
+          unit: 'mm', 
+          format: [receiptWidth, 297], 
+          orientation: 'portrait'
+        }
+      };
+      
+      await html2pdf().set(opt).from(receiptRef.current).save();
+      toast.success(`PDF (${receiptWidth}mm) heruntergeladen!`);
+    } catch (error) {
+      console.error('PDF error:', error);
+      toast.error('PDF-Fehler');
+    } finally {
+      setIsPrinting(false);
+    }
+  };
+
+  // Epson Direct Print via ePOS SDK
+  const handleEpsonPrint = async () => {
+    setIsPrinting(true);
+    try {
+      // Check if Epson ePOS SDK is available
+      if (typeof window.epson !== 'undefined' && window.epson.ePOSDevice) {
+        // Epson SDK is loaded - use it
+        const ePosDev = new window.epson.ePOSDevice();
+        // Connect to printer (needs to be configured with printer IP)
+        toast.info('Verbinde mit Epson Drucker...');
+        // This would need printer IP configuration
+        toast.error('Bitte Drucker-IP in Einstellungen konfigurieren');
+      } else {
+        // Fallback: Open print dialog with receipt-optimized settings
+        toast.info('Epson SDK nicht geladen - verwende Browser-Druck');
+        window.print();
+      }
+    } catch (error) {
+      console.error('Epson print error:', error);
+      toast.error('Druckfehler');
+    } finally {
+      setIsPrinting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -86,13 +155,118 @@ export default function ReceiptPage() {
   return (
     <div className="min-h-screen bg-white" data-testid="receipt-page">
       {/* Controls */}
-      <div className="no-print fixed top-4 left-4 right-4 flex justify-between z-50">
-        <Link to="/"><Button variant="outline" size="sm"><ArrowLeft className="w-4 h-4 mr-2" />Zurück</Button></Link>
-        <Button onClick={handlePrint} size="lg" className="shadow-lg"><Printer className="w-5 h-5 mr-2" />Bon drucken</Button>
+      <div className="no-print fixed top-4 left-4 right-4 flex justify-between items-center z-50 gap-2">
+        <Link to="/history">
+          <Button variant="outline" size="sm">
+            <ArrowLeft className="w-4 h-4 mr-2" />Zurück
+          </Button>
+        </Link>
+        
+        <div className="flex gap-2 items-center">
+          {/* Format Settings Popover */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="lg">
+                <Settings2 className="w-5 h-5 mr-2" />
+                Format
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-72" align="end">
+              <div className="space-y-4">
+                <h4 className="font-medium">Druckformat anpassen</h4>
+                
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <Label>Breite</Label>
+                    <span className="text-sm font-mono">{receiptWidth}mm</span>
+                  </div>
+                  <Slider
+                    value={[receiptWidth]}
+                    onValueChange={(v) => setReceiptWidth(v[0])}
+                    min={50}
+                    max={120}
+                    step={5}
+                  />
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>50mm</span>
+                    <span>80mm</span>
+                    <span>120mm</span>
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <Label>Skalierung</Label>
+                    <span className="text-sm font-mono">{receiptScale}%</span>
+                  </div>
+                  <Slider
+                    value={[receiptScale]}
+                    onValueChange={(v) => setReceiptScale(v[0])}
+                    min={50}
+                    max={200}
+                    step={10}
+                  />
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>50%</span>
+                    <span>100%</span>
+                    <span>200%</span>
+                  </div>
+                </div>
+                
+                <div className="pt-2 border-t">
+                  <p className="text-xs text-muted-foreground">
+                    Standard: 80mm Breite, 100% Skalierung
+                  </p>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+          
+          {/* PDF Download */}
+          <Button 
+            variant="outline" 
+            onClick={handleDownloadPDF}
+            disabled={isPrinting}
+            size="lg"
+          >
+            <Download className="w-5 h-5 mr-2" />
+            PDF
+          </Button>
+          
+          {/* Browser Print */}
+          <Button 
+            variant="outline"
+            onClick={handlePrint} 
+            size="lg"
+          >
+            <Printer className="w-5 h-5 mr-2" />
+            Drucken
+          </Button>
+          
+          {/* Epson Direct */}
+          <Button 
+            onClick={handleEpsonPrint}
+            disabled={isPrinting}
+            size="lg" 
+            className="shadow-lg bg-blue-600 hover:bg-blue-700"
+          >
+            <Wifi className="w-5 h-5 mr-2" />
+            Epson
+          </Button>
+        </div>
       </div>
 
-      {/* Receipt */}
-      <div className="print-area receipt-container">
+      {/* Receipt with dynamic width */}
+      <div 
+        className="print-area receipt-container" 
+        ref={receiptRef}
+        style={{ 
+          width: `${receiptWidth}mm`,
+          maxWidth: `${receiptWidth}mm`,
+          transform: `scale(${receiptScale / 100})`,
+          transformOrigin: 'top center'
+        }}
+      >
         <div className="receipt-content">
           {/* Store Header */}
           {settings.show_store_name && (
@@ -166,47 +340,122 @@ export default function ReceiptPage() {
       </div>
 
       <style>{`
+        /* Screen preview - 80mm thermal receipt style */
         .receipt-container {
-          max-width: 320px;
+          width: 302px; /* 80mm at 96dpi */
+          max-width: 302px;
           margin: 80px auto 40px;
-          padding: 20px;
-          font-family: 'Courier New', monospace;
+          padding: 12px 15px;
+          font-family: 'Courier New', Courier, monospace;
           font-size: 14px;
           line-height: 1.4;
           background: white;
           box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
         .receipt-content { text-align: center; }
-        .store-name { font-weight: bold; margin-bottom: 5px; }
-        .store-info { font-size: 12px; color: #666; }
-        .receipt-divider { font-size: 12px; color: #999; margin: 10px 0; letter-spacing: -1px; }
-        .receipt-title { font-weight: bold; letter-spacing: 2px; margin: 10px 0 5px; }
-        .receipt-date { font-size: 12px; color: #666; }
-        .receipt-id { font-size: 11px; color: #999; margin-bottom: 10px; }
+        .store-name { font-weight: bold; margin-bottom: 5px; font-size: 18px; }
+        .store-info { font-size: 13px; color: #333; }
+        .receipt-divider { font-size: 12px; color: #666; margin: 10px 0; letter-spacing: -1px; }
+        .receipt-title { font-weight: bold; letter-spacing: 2px; margin: 10px 0 5px; font-size: 16px; }
+        .receipt-date { font-size: 13px; color: #333; }
+        .receipt-id { font-size: 12px; color: #666; margin-bottom: 10px; }
         .receipt-items { text-align: left; }
-        .receipt-item { margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px dashed #ddd; }
+        .receipt-item { margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px dashed #999; }
         .receipt-item:last-child { border-bottom: none; }
-        .item-name { font-weight: bold; }
-        .item-details { font-size: 11px; color: #666; }
-        .item-price { font-weight: bold; text-align: right; margin-top: 4px; }
-        .receipt-summary { text-align: left; font-size: 12px; }
+        .item-name { font-weight: bold; font-size: 14px; }
+        .item-details { font-size: 12px; color: #333; }
+        .item-price { font-weight: bold; text-align: right; margin-top: 4px; font-size: 14px; }
+        .receipt-summary { text-align: left; font-size: 13px; }
         .summary-row { display: flex; justify-content: space-between; }
-        .receipt-total { display: flex; justify-content: space-between; font-weight: bold; padding: 10px 0; }
-        .receipt-footer { margin-top: 15px; }
-        .receipt-small { font-size: 10px; color: #999; margin-top: 5px; }
+        .receipt-total { display: flex; justify-content: space-between; font-weight: bold; padding: 10px 0; font-size: 18px; }
+        .receipt-footer { margin-top: 15px; font-size: 12px; }
+        .receipt-small { font-size: 11px; color: #666; margin-top: 5px; }
         .receipt-spacer { height: 30px; }
 
+        /* 80mm Thermal Printer Styles */
         @media print {
-          @page { size: 80mm auto; margin: 0; }
-          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-          html, body { width: 80mm; margin: 0; padding: 0; }
-          .no-print { display: none !important; }
-          .receipt-container { width: 80mm; max-width: 80mm; margin: 0; padding: 3mm; box-shadow: none; }
-          .store-info, .receipt-date, .receipt-id { font-size: 10px; }
-          .receipt-divider { font-size: 10px; margin: 5px 0; }
-          .item-details { font-size: 9px; }
-          .receipt-small { font-size: 8px; }
-          .receipt-spacer { height: 15mm; }
+          @page { 
+            size: 80mm 297mm;
+            margin: 0mm;
+          }
+          
+          html, body { 
+            width: 80mm;
+            margin: 0;
+            padding: 0;
+            background: white;
+          }
+          
+          .no-print { 
+            display: none !important; 
+          }
+          
+          .receipt-container { 
+            width: 100%;
+            max-width: 100%;
+            margin: 0;
+            padding: 2mm 3mm;
+            box-shadow: none;
+            page-break-inside: avoid;
+          }
+          
+          .store-name { 
+            font-size: 5mm !important;
+          }
+          
+          .store-info { 
+            font-size: 3.5mm !important;
+            color: black;
+          }
+          
+          .receipt-divider { 
+            font-size: 3mm;
+            margin: 2mm 0;
+            color: black;
+          }
+          
+          .receipt-title { 
+            font-size: 4.5mm !important;
+          }
+          
+          .receipt-date, .receipt-id { 
+            font-size: 3.5mm !important;
+            color: black;
+          }
+          
+          .item-name { 
+            font-size: 4mm !important;
+          }
+          
+          .item-details { 
+            font-size: 3mm !important;
+            color: black;
+          }
+          
+          .item-price { 
+            font-size: 4mm !important;
+          }
+          
+          .receipt-summary {
+            font-size: 3.5mm;
+          }
+          
+          .receipt-total { 
+            font-size: 5mm !important;
+          }
+          
+          .receipt-footer { 
+            font-size: 3mm !important;
+          }
+          
+          .receipt-small { 
+            font-size: 2.5mm !important;
+            color: black;
+          }
+          
+          .receipt-spacer { 
+            height: 5mm;
+          }
         }
       `}</style>
     </div>
