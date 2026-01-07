@@ -7,7 +7,7 @@ import {
     Baby, Dog, Cat, Plane, Hammer, Wrench, Utensils,
     Trash2, History, Plus, X, Check, Settings, Zap, HelpCircle, ExternalLink, LogOut, User,
     Image, Camera, Eye, EyeOff, RotateCcw, FileText, Type, Shield, Download, Upload, CheckCircle, AlertCircle,
-    FileSpreadsheet, ArrowLeft
+    FileSpreadsheet, ArrowLeft, CircleDot
 } from 'lucide-react';
 
 // Import specific clothing icons from Game Icons
@@ -17,7 +17,7 @@ import {
     GiWinterHat, GiRunningShoe, GiConverseShoe, GiHighHeel, GiBoots,
     GiZipper, GiBelt, GiNecklace, GiEarrings, GiSpectacles, GiHandBag,
     GiBackpack, GiSchoolBag, GiTopHat, GiBowTie, GiRolledCloth, GiClothesline,
-    GiHanger, GiSewingNeedle, GiSewingString, GiButtons, GiSonicShoes
+    GiHanger, GiSewingNeedle, GiSewingString, GiSonicShoes
 } from 'react-icons/gi';
 
 // Combined Icon Map
@@ -63,7 +63,7 @@ export const iconMap = {
     'Hanger': GiHanger,
     'Needle': GiSewingNeedle,
     'Thread': GiSewingString,
-    'Buttons': GiButtons,
+    'Buttons': CircleDot,
     'Vintage': GiSonicShoes,
 
     // Aliases for compatibility
