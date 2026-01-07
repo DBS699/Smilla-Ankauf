@@ -12,7 +12,7 @@ import {
 
 // Import specific clothing icons from Game Icons
 import {
-    GiPoloShirt, GiHoodie, GiLabCoat, GiOvercoat, GiKimono, GiDress,
+    GiPoloShirt, GiHoodie, GiLabCoat, GiCoat, GiKimono, GiDress,
     GiSkirt, GiShorts, GiTrousers, GiUnderwear, GiWinterGloves,
     GiWinterHat, GiRunningShoe, GiConverseShoe, GiHighHeel, GiBoots,
     GiZipper, GiBelt, GiNecklace, GiEarrings, GiSpectacles, GiHandBag,
@@ -37,7 +37,7 @@ export const iconMap = {
     'Polo': GiPoloShirt,
     'Hoodie': GiHoodie,
     'Jacket': GiLabCoat, // Closest generic jacket
-    'Coat': GiOvercoat,
+    'Coat': GiCoat,
     'Kimono': GiKimono,
     'Dress': GiDress,
     'Skirt': GiSkirt,
