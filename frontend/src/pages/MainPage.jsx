@@ -544,7 +544,7 @@ export default function MainPage() {
         <div className="flex gap-4 lg:gap-8">
           <main className="flex-1 min-w-0">
             <h2 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-muted-foreground">Kategorie wählen</h2>
-            <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-3 lg:gap-4">
+            <div className="grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
               {allCategories.map((category) => {
                 const Icon = getIcon(category.icon);
                 return (
