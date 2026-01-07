@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Sun, Moon, Settings, History, User, LogOut,
-  ShoppingBag, Trash2, Plus, Check, Zap, X, HelpCircle, ExternalLink // UI icons
+  ShoppingBag, Trash2, Plus, Check, Zap, X, HelpCircle, ExternalLink, Info // UI icons
 } from 'lucide-react';
 import { getIcon } from '@/lib/icons';
 import { Button } from '@/components/ui/button';
