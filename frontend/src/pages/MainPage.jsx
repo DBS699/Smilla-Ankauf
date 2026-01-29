@@ -118,6 +118,7 @@ export default function MainPage() {
 
   const [brandExamples, setBrandExamples] = useState(DEFAULT_BRAND_EXAMPLES);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     loadTodayStats();
     loadCustomCategories();

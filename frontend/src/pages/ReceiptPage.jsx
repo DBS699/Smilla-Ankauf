@@ -42,6 +42,7 @@ export default function ReceiptPage() {
   const [receiptScale, setReceiptScale] = useState(100); // %
   const receiptRef = useRef(null);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     loadData();
   }, [id]);
