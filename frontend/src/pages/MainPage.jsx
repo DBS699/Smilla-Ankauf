@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Shirt, Layers, Ruler, Briefcase, Scissors,
@@ -182,7 +182,8 @@ export default function MainPage() {
     }
   };
   // Combine default and custom categories, filter out hidden ones
-  const allCategories = [
+  // Memoized to prevent recalculation on every render (react-best-practices: rerender-memo)
+  const allCategories = useMemo(() => [
     ...CATEGORIES.filter(cat => !hiddenCategories.includes(cat.name)),
     ...customCategories.map(cat => ({
       id: cat.name.toLowerCase().replace(/\s+/g, '_'),
@@ -190,7 +191,7 @@ export default function MainPage() {
       icon: cat.icon || categoryIcons[cat.name] || 'Shirt',
       image: cat.image || null
     }))
-  ];
+  ], [hiddenCategories, customCategories, categoryIcons]);
 
   // Find longest category name for button width
   const longestCategoryName = allCategories.reduce((longest, cat) =>
