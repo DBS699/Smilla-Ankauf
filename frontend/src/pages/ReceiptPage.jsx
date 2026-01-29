@@ -78,28 +78,28 @@ export default function ReceiptPage() {
   // PDF Download - custom width
   const handleDownloadPDF = async () => {
     if (!receiptRef.current) return;
-    
+
     setIsPrinting(true);
     try {
       const scaleFactor = receiptScale / 100;
       const widthPx = (receiptWidth / 25.4) * 96 * scaleFactor; // mm to px at 96dpi
-      
+
       const opt = {
         margin: 0,
         filename: `Quittung_${purchase.id.slice(0, 8)}.pdf`,
         image: { type: 'jpeg', quality: 1 },
-        html2canvas: { 
+        html2canvas: {
           scale: 2,
           useCORS: true,
           width: widthPx,
         },
-        jsPDF: { 
-          unit: 'mm', 
-          format: [receiptWidth, 297], 
+        jsPDF: {
+          unit: 'mm',
+          format: [receiptWidth, 297],
           orientation: 'portrait'
         }
       };
-      
+
       await html2pdf().set(opt).from(receiptRef.current).save();
       toast.success(`PDF (${receiptWidth}mm) heruntergeladen!`);
     } catch (error) {
@@ -161,7 +161,7 @@ export default function ReceiptPage() {
             <ArrowLeft className="w-4 h-4 mr-2" />Zurück
           </Button>
         </Link>
-        
+
         <div className="flex gap-2 items-center">
           {/* Format Settings Popover */}
           <Popover>
@@ -174,7 +174,7 @@ export default function ReceiptPage() {
             <PopoverContent className="w-72" align="end">
               <div className="space-y-4">
                 <h4 className="font-medium">Druckformat anpassen</h4>
-                
+
                 <div className="space-y-2">
                   <div className="flex justify-between">
                     <Label>Breite</Label>
@@ -193,7 +193,7 @@ export default function ReceiptPage() {
                     <span>120mm</span>
                   </div>
                 </div>
-                
+
                 <div className="space-y-2">
                   <div className="flex justify-between">
                     <Label>Skalierung</Label>
@@ -203,16 +203,16 @@ export default function ReceiptPage() {
                     value={[receiptScale]}
                     onValueChange={(v) => setReceiptScale(v[0])}
                     min={50}
-                    max={200}
-                    step={10}
+                    max={500}
+                    step={5}
                   />
                   <div className="flex justify-between text-xs text-muted-foreground">
                     <span>50%</span>
                     <span>100%</span>
-                    <span>200%</span>
+                    <span>500%</span>
                   </div>
                 </div>
-                
+
                 <div className="pt-2 border-t">
                   <p className="text-xs text-muted-foreground">
                     Standard: 80mm Breite, 100% Skalierung
@@ -221,10 +221,10 @@ export default function ReceiptPage() {
               </div>
             </PopoverContent>
           </Popover>
-          
+
           {/* PDF Download */}
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={handleDownloadPDF}
             disabled={isPrinting}
             size="lg"
@@ -232,22 +232,22 @@ export default function ReceiptPage() {
             <Download className="w-5 h-5 mr-2" />
             PDF
           </Button>
-          
+
           {/* Browser Print */}
-          <Button 
+          <Button
             variant="outline"
-            onClick={handlePrint} 
+            onClick={handlePrint}
             size="lg"
           >
             <Printer className="w-5 h-5 mr-2" />
             Drucken
           </Button>
-          
+
           {/* Epson Direct */}
-          <Button 
+          <Button
             onClick={handleEpsonPrint}
             disabled={isPrinting}
-            size="lg" 
+            size="lg"
             className="shadow-lg bg-blue-600 hover:bg-blue-700"
           >
             <Wifi className="w-5 h-5 mr-2" />
@@ -257,10 +257,10 @@ export default function ReceiptPage() {
       </div>
 
       {/* Receipt with dynamic width */}
-      <div 
-        className="print-area receipt-container" 
+      <div
+        className="print-area receipt-container"
         ref={receiptRef}
-        style={{ 
+        style={{
           width: `${receiptWidth}mm`,
           maxWidth: `${receiptWidth}mm`,
           transform: `scale(${receiptScale / 100})`,
