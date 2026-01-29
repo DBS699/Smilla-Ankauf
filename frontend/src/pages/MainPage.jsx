@@ -120,9 +120,12 @@ export default function MainPage() {
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    loadTodayStats();
-    loadCustomCategories();
-    loadSettings();
+    // Parallelize independent API calls (react-best-practices: async-parallel)
+    Promise.all([
+      loadTodayStats(),
+      loadCustomCategories(),
+      loadSettings()
+    ]);
   }, []);
 
   const loadTodayStats = async () => {
