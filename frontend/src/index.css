@@ -59,6 +59,7 @@ code {
     * {
         @apply border-border;
     }
+
     body {
         @apply bg-background text-foreground;
     }
@@ -95,7 +96,9 @@ code {
 }
 
 .dark-mode .text-primary,
-.dark-mode h1, .dark-mode h2, .dark-mode h3 {
+.dark-mode h1,
+.dark-mode h2,
+.dark-mode h3 {
     color: #ffffff !important;
 }
 
@@ -153,20 +156,36 @@ code {
     font-family: 'Oswald', monospace;
 }
 
-/* Print styles */
+/* Print styles - Optimized for Epson TM-m30II (80mm thermal printer) */
 @media print {
+
+    /* Hardwire 80mm paper width, remove all margins and headers/footers */
+    @page {
+        size: 80mm auto;
+        /* 80mm width, auto height */
+        margin: 0;
+    }
+
     body * {
         visibility: hidden;
     }
-    .print-area, .print-area * {
+
+    .print-area,
+    .print-area * {
         visibility: visible;
     }
+
     .print-area {
         position: absolute;
         left: 0;
         top: 0;
-        width: 100%;
+        width: 80mm !important;
+        /* Enforce 80mm width */
+        max-width: 80mm !important;
+        margin: 0 !important;
+        padding: 0 !important;
     }
+
     .no-print {
         display: none !important;
     }
@@ -192,6 +211,7 @@ code {
         opacity: 0;
         transform: translateY(10px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -246,38 +266,38 @@ code {
     .touch-btn {
         min-height: 52px;
     }
-    
+
     /* Smaller text in stats cards */
     .stats-card .font-display {
         font-size: 1.25rem;
     }
-    
+
     /* Responsive table cells */
     .history-table td,
     .history-table th {
         padding: 0.5rem;
         font-size: 0.875rem;
     }
-    
+
     .category-card {
         min-height: 120px;
         padding: 0.75rem;
     }
-    
+
     .category-card span {
         font-size: 0.75rem;
     }
-    
+
     /* Dialog improvements */
     .level-btn {
         min-height: 60px;
     }
-    
+
     /* Cart items compact view */
     .cart-item {
         padding: 0.5rem;
     }
-    
+
     /* Header spacing */
     header .container {
         padding-left: 0.75rem;
@@ -290,7 +310,7 @@ code {
     .category-card {
         min-height: 110px;
     }
-    
+
     /* Better spacing for tablet sidebar */
     .sidebar-shadow {
         padding: 1rem;
