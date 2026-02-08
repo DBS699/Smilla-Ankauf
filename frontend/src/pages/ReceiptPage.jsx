@@ -111,31 +111,84 @@ export default function ReceiptPage() {
     }
   };
 
+  // App Bridge Print (Bluetooth via Helper App)
+  const handleAppPrint = async () => {
+    if (!receiptRef.current) return;
+    setIsPrinting(true);
+
+    try {
+      // 1. Generate PDF Blob
+      const scaleFactor = receiptScale / 100;
+      const widthPx = (receiptWidth / 25.4) * 96 * scaleFactor;
+
+      const opt = {
+        margin: 0,
+        filename: `Quittung_${purchase.id.slice(0, 8)}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: {
+          scale: 2,
+          useCORS: true,
+          width: widthPx,
+          windowWidth: widthPx, // Critical for consistent rendering
+        },
+        jsPDF: {
+          unit: 'mm',
+          format: [receiptWidth, 1000], // Long strip format (auto-height simulated)
+          orientation: 'portrait'
+        }
+      };
+
+      const pdfBlob = await html2pdf().set(opt).from(receiptRef.current).output('blob');
+      const file = new File([pdfBlob], opt.filename, { type: 'application/pdf' });
+
+      // 2. Share via Web Share API (Mobile/Tablet)
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: 'Quittung drucken',
+          text: 'Bitte an "Epson TM Print" oder "RawBT" senden.',
+        });
+        toast.success('An Drucker-App gesendet!');
+      } else {
+        // Fallback: Download for manual open
+        const url = URL.createObjectURL(pdfBlob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = opt.filename;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast.info('PDF heruntergeladen - bitte in Drucker-App öffnen');
+      }
+
+    } catch (error) {
+      console.error('App print error:', error);
+      if (error.name !== 'AbortError') {
+        toast.error('Fehler beim Teilen');
+      }
+    } finally {
+      setIsPrinting(false);
+    }
+  };
+
   // Epson Direct Print via ePOS SDK
   const handleEpsonPrint = async () => {
     setIsPrinting(true);
     try {
       // 1. Check SDK availability
       if (typeof window.epson === 'undefined' || !window.epson.ePOSDevice) {
-        toast.info('Epson SDK nicht geladen - verwende Browser-Druck');
-        window.print();
+        toast.info('Epson SDK nicht geladen - nutze "Via App" Button');
         setIsPrinting(false);
         return;
       }
 
       // 2. Check IP Configuration
       if (!settings.printer_ip) {
-        toast.error('Bitte Drucker-IP in Einstellungen konfigurieren', {
-          action: {
-            label: 'Einstellungen',
-            onClick: () => window.location.href = '/settings'
-          }
-        });
+        toast.error('Bitte Drucker-IP in Einstellungen konfigurieren');
         setIsPrinting(false);
         return;
       }
 
-      toast.info('Verbinde mit Drucker...');
+      toast.info('Verbinde mit Drucker (LAN)...');
       const ePosDev = new window.epson.ePOSDevice();
 
       // 3. Connect to Printer
@@ -358,14 +411,27 @@ export default function ReceiptPage() {
           </Button>
 
           {/* Epson Direct */}
+          {/* Epson Direct */}
           <Button
             onClick={handleEpsonPrint}
             disabled={isPrinting}
             size="lg"
-            className="shadow-lg bg-blue-600 hover:bg-blue-700"
+            variant="outline"
+            className="hidden sm:flex"
           >
             <Wifi className="w-5 h-5 mr-2" />
-            Epson
+            LAN
+          </Button>
+
+          {/* App Bridge (Bluetooth) */}
+          <Button
+            onClick={handleAppPrint}
+            disabled={isPrinting}
+            size="lg"
+            className="shadow-lg bg-blue-600 hover:bg-blue-700 text-white"
+          >
+            <Printer className="w-5 h-5 mr-2" />
+            Via App
           </Button>
         </div>
       </div>
