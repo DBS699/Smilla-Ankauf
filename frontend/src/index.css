@@ -183,7 +183,32 @@ code {
         /* Enforce 80mm width */
         max-width: 80mm !important;
         margin: 0 !important;
-        padding: 0 !important;
+        padding: 2mm !important;
+        /* CRITICAL: Reset any scale transform for print */
+        transform: none !important;
+        transform-origin: top left !important;
+    }
+
+    /* Boost font sizes for thermal print readability */
+    .print-area .store-name {
+        font-size: 16pt !important;
+    }
+
+    .print-area .receipt-title {
+        font-size: 14pt !important;
+    }
+
+    .print-area .receipt-items,
+    .print-area .receipt-item {
+        font-size: 11pt !important;
+    }
+
+    .print-area .receipt-total {
+        font-size: 14pt !important;
+    }
+
+    .print-area .receipt-footer {
+        font-size: 10pt !important;
     }
 
     .no-print {
