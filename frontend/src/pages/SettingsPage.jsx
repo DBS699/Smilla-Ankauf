@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Download, Upload, Trash2, FileSpreadsheet, CheckCircle, AlertCircle, Plus, X, Palette, Shield, Image, Camera, Eye, EyeOff, RotateCcw, FileText, Type } from 'lucide-react';
+import { ArrowLeft, Download, Upload, Trash2, FileSpreadsheet, CheckCircle, AlertCircle, Plus, X, Palette, Shield, Image, Camera, Eye, EyeOff, RotateCcw, FileText, Type, Printer } from 'lucide-react';
 import {
   Shirt, Layers, Ruler, Briefcase, Scissors, Dumbbell, Waves, ShoppingBag,
   Tag, Gift, Crown, Star, Heart, Sparkles, Gem, Sun, Moon,
