@@ -111,42 +111,141 @@ export default function ReceiptPage() {
     }
   };
 
-  // App Bridge Print (Bluetooth via Helper App)
+  // App Bridge Print (Bluetooth via Helper App) - VECTOR MODE
   const handleAppPrint = async () => {
-    if (!receiptRef.current) return;
     setIsPrinting(true);
 
     try {
-      // 1. Calculate Dynamic Height
-      // Get the actual height of the receipt content + small buffer
-      const contentHeight = receiptRef.current.offsetHeight;
-      const contentHeightMm = (contentHeight * 25.4) / 96; // px to mm approx
+      // Dynamic import to avoid SSR issues if any
+      const { jsPDF } = await import('jspdf');
 
-      const scaleFactor = receiptScale / 100;
-      const widthPx = (receiptWidth / 25.4) * 96 * scaleFactor;
+      const margin = 4;
+      const width = 80;
+      const contentWidth = width - (margin * 2);
 
-      const opt = {
-        margin: 0,
-        filename: `Quittung_${purchase.id.slice(0, 8)}.pdf`,
-        image: { type: 'png', quality: 1.0 }, // PNG for sharper text
-        html2canvas: {
-          scale: 4, // Higher scale for crisp text
-          useCORS: true,
-          width: widthPx,
-          windowWidth: widthPx,
-          backgroundColor: '#ffffff', // Ensure white background
-          logging: false
-        },
-        jsPDF: {
-          unit: 'mm',
-          format: [receiptWidth, contentHeightMm + 10], // Exact height + 10mm buffer
-          orientation: 'portrait',
-          compress: true
+      // Helper function to draw content and track Y position
+      const drawReceiptContent = (doc, startY) => {
+        let y = startY;
+
+        // --- HEADER ---
+        if (settings.show_store_name) {
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(14);
+          doc.text(settings.store_name, width / 2, y, { align: 'center' });
+          y += 6;
         }
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+
+        if (settings.show_address) {
+          doc.text(settings.store_address, width / 2, y, { align: 'center' });
+          y += 4;
+          doc.text(settings.store_city, width / 2, y, { align: 'center' });
+          y += 4;
+        }
+        if (settings.show_phone) {
+          doc.text(settings.store_phone, width / 2, y, { align: 'center' });
+          y += 6;
+        }
+
+        // Divider
+        doc.setLineWidth(0.1);
+        doc.line(margin, y, width - margin, y);
+        y += 6;
+
+        // Title
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        doc.text('ANKAUFSQUITTUNG', width / 2, y, { align: 'center' });
+        y += 6;
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        if (settings.show_date) {
+          doc.text(`${formatDate(purchase.timestamp)} ${formatTime(purchase.timestamp)}`, width / 2, y, { align: 'center' });
+          y += 4;
+        }
+        if (settings.show_receipt_id) {
+          doc.text(`Nr. ${purchase.id.slice(0, 8).toUpperCase()}`, width / 2, y, { align: 'center' });
+          y += 6;
+        }
+
+        doc.line(margin, y, width - margin, y);
+        y += 6;
+
+        // --- ITEMS ---
+        doc.setFontSize(10);
+
+        purchase.items.forEach(item => {
+          // Item Name (Bold)
+          doc.setFont('helvetica', 'bold');
+          doc.text(item.category, margin, y);
+
+          // Price (Right aligned)
+          const priceStr = `CHF ${item.price.toFixed(2)}`;
+          doc.text(priceStr, width - margin, y, { align: 'right' });
+          y += 5;
+
+          // Details (Light/Small)
+          if (settings.show_item_details) {
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8);
+            doc.text(`${item.price_level} / ${item.condition}`, margin, y);
+            y += 4;
+          }
+
+          // Reset for next item
+          doc.setFontSize(10);
+          y += 2; // Spacing
+        });
+
+        y += 2;
+        doc.line(margin, y, width - margin, y);
+        y += 6;
+
+        // --- TOTAL ---
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(14);
+        doc.text('TOTAL', margin, y);
+
+        const total = purchase.items.reduce((sum, item) => sum + item.price, 0);
+        doc.text(`CHF ${total.toFixed(2)}`, width - margin, y, { align: 'right' });
+        y += 10;
+
+        // --- FOOTER ---
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        if (settings.show_footer) {
+          doc.text(settings.footer_text, width / 2, y, { align: 'center' });
+          y += 5;
+          doc.setFontSize(8);
+          doc.text(settings.sub_footer_text, width / 2, y, { align: 'center' });
+          y += 5;
+        }
+        return y;
       };
 
-      const pdfBlob = await html2pdf().set(opt).from(receiptRef.current).output('blob');
-      const file = new File([pdfBlob], opt.filename, { type: 'application/pdf' });
+      // PASS 1: Calculate Height
+      const dummyDoc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: [width, 2000] // Use a large height for calculation
+      });
+      const finalY = drawReceiptContent(dummyDoc, 10);
+      const exactHeight = finalY + 5; // Add a small buffer at the bottom
+
+      // PASS 2: Generate Final PDF with exact height
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: [width, exactHeight]
+      });
+      drawReceiptContent(doc, 10); // Draw content on the final doc
+
+      const pdfBlob = doc.output('blob');
+      const filename = `Quittung_${purchase.id.slice(0, 8)}.pdf`;
+      const file = new File([pdfBlob], filename, { type: 'application/pdf' });
 
       // 2. Share via Web Share API
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -160,16 +259,16 @@ export default function ReceiptPage() {
         const url = URL.createObjectURL(pdfBlob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = opt.filename;
+        a.download = filename;
         a.click();
         URL.revokeObjectURL(url);
         toast.info('PDF heruntergeladen');
       }
 
     } catch (error) {
-      console.error('App print error:', error);
-      if (error.name !== 'AbortError') {
-        toast.error('Fehler beim Teilen');
+      console.error(error);
+      if (error.name !== 'AbortError') { // User cancelled share
+        toast.error("Vector Print Error");
       }
     } finally {
       setIsPrinting(false);
