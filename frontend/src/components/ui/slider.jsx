@@ -24,7 +24,7 @@ const Slider = React.forwardRef(({ className, orientation = "horizontal", ...pro
         <SliderPrimitive.Range
           className={cn(
             "absolute bg-primary",
-            isVertical ? "w-full" : "h-full"
+            isVertical ? "w-full left-0 right-0" : "h-full top-0 bottom-0"
           )}
         />
       </SliderPrimitive.Track>
