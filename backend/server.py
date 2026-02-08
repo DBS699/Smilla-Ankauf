@@ -312,6 +312,11 @@ async def delete_purchase(purchase_id: str):
         raise HTTPException(status_code=404, detail="Purchase not found")
     return {"message": "Purchase deleted"}
 
+@api_router.delete("/purchases")
+async def delete_all_purchases():
+    result = await db.purchases.delete_many({})
+    return {"message": f"{result.deleted_count} Ankäufe gelöscht"}
+
 # Export all purchases as Excel
 @api_router.get("/purchases/export/excel")
 async def export_purchases_excel(start_date: Optional[str] = None, end_date: Optional[str] = None):

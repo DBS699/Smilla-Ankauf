@@ -46,6 +46,12 @@ export const api = {
     return response.data;
   },
 
+  // Delete all purchases
+  resetHistory: async () => {
+    const response = await apiClient.delete('/purchases');
+    return response.data;
+  },
+
   // Get daily stats
   getDailyStats: async (days = 30) => {
     const response = await apiClient.get('/stats/daily', { params: { days } });

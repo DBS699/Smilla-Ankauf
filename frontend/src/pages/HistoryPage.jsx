@@ -12,6 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
 import api from '@/lib/api';
 
 export default function HistoryPage() {
@@ -25,6 +26,7 @@ export default function HistoryPage() {
   const [exportStartDate, setExportStartDate] = useState('');
   const [exportEndDate, setExportEndDate] = useState('');
   const [showExportFilter, setShowExportFilter] = useState(false);
+  const { isAdmin } = useAuth();
 
   useEffect(() => {
     loadData();
@@ -61,13 +63,23 @@ export default function HistoryPage() {
     }
   };
 
+  const handleResetHistory = async () => {
+    try {
+      await api.resetHistory();
+      toast.success('Historie zurückgesetzt');
+      loadData();
+    } catch (error) {
+      toast.error('Fehler beim Zurücksetzen');
+    }
+  };
+
   const handleExportExcel = async (withFilter = false) => {
     setIsExporting(true);
     try {
       const startDate = withFilter && exportStartDate ? exportStartDate : null;
       const endDate = withFilter && exportEndDate ? exportEndDate : null;
       await api.exportPurchasesExcel(startDate, endDate);
-      
+
       if (withFilter && (startDate || endDate)) {
         toast.success(`Export erstellt (${startDate || 'Anfang'} bis ${endDate || 'Ende'})`);
       } else {
@@ -129,77 +141,105 @@ export default function HistoryPage() {
               <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">Übersicht aller Ankäufe</p>
             </div>
           </div>
-          <Popover open={showExportFilter} onOpenChange={setShowExportFilter}>
-            <PopoverTrigger asChild>
-              <Button 
-                variant="outline" 
-                disabled={isExporting}
-                data-testid="export-excel-btn"
-              >
-                <Download className="w-4 h-4 mr-2" />
-                <span className="hidden sm:inline">{isExporting ? 'Exportiert...' : 'Excel Export'}</span>
-                <span className="sm:hidden">{isExporting ? '...' : 'Export'}</span>
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-80" align="end">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-medium flex items-center gap-2">
-                    <Filter className="w-4 h-4" />
-                    Export-Filter
-                  </h4>
-                  {(exportStartDate || exportEndDate) && (
-                    <Button variant="ghost" size="sm" onClick={clearExportFilter}>
-                      <X className="w-4 h-4" />
-                    </Button>
-                  )}
-                </div>
-                
-                <div className="grid gap-3">
-                  <div>
-                    <Label htmlFor="export-start">Von Datum</Label>
-                    <Input 
-                      id="export-start"
-                      type="date" 
-                      value={exportStartDate}
-                      onChange={(e) => setExportStartDate(e.target.value)}
-                      className="mt-1"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="export-end">Bis Datum</Label>
-                    <Input 
-                      id="export-end"
-                      type="date" 
-                      value={exportEndDate}
-                      onChange={(e) => setExportEndDate(e.target.value)}
-                      className="mt-1"
-                    />
-                  </div>
-                </div>
 
-                <div className="flex gap-2">
-                  <Button 
-                    variant="outline" 
-                    className="flex-1"
-                    onClick={() => handleExportExcel(false)}
-                    disabled={isExporting}
-                  >
-                    Alle
+          <div className="flex items-center gap-2">
+            {isAdmin() && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" size="default" data-testid="reset-history-btn">
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    <span className="hidden sm:inline">Reset</span>
                   </Button>
-                  <Button 
-                    className="flex-1"
-                    onClick={() => handleExportExcel(true)}
-                    disabled={isExporting || (!exportStartDate && !exportEndDate)}
-                  >
-                    Gefiltert
-                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Historie zurücksetzen?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Warnung: Dies löscht ALLE Ankäufe unwiderruflich! Bist du sicher?
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleResetHistory} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                      Alles Löschen
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+            <Popover open={showExportFilter} onOpenChange={setShowExportFilter}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  disabled={isExporting}
+                  data-testid="export-excel-btn"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  <span className="hidden sm:inline">{isExporting ? 'Exportiert...' : 'Excel Export'}</span>
+                  <span className="sm:hidden">{isExporting ? '...' : 'Export'}</span>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-80" align="end">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-medium flex items-center gap-2">
+                      <Filter className="w-4 h-4" />
+                      Export-Filter
+                    </h4>
+                    {(exportStartDate || exportEndDate) && (
+                      <Button variant="ghost" size="sm" onClick={clearExportFilter}>
+                        <X className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
+
+                  <div className="grid gap-3">
+                    <div>
+                      <Label htmlFor="export-start">Von Datum</Label>
+                      <Input
+                        id="export-start"
+                        type="date"
+                        value={exportStartDate}
+                        onChange={(e) => setExportStartDate(e.target.value)}
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="export-end">Bis Datum</Label>
+                      <Input
+                        id="export-end"
+                        type="date"
+                        value={exportEndDate}
+                        onChange={(e) => setExportEndDate(e.target.value)}
+                        className="mt-1"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => handleExportExcel(false)}
+                      disabled={isExporting}
+                    >
+                      Alle
+                    </Button>
+                    <Button
+                      className="flex-1"
+                      onClick={() => handleExportExcel(true)}
+                      disabled={isExporting || (!exportStartDate && !exportEndDate)}
+                    >
+                      Gefiltert
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            </PopoverContent>
-          </Popover>
-        </div>
-      </header>
+              </PopoverContent>
+
+            </Popover>
+          </div>
+        </div >
+      </header >
 
       <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 lg:py-8">
         {/* Stats cards */}
@@ -445,6 +485,6 @@ export default function HistoryPage() {
           </TabsContent>
         </Tabs>
       </div>
-    </div>
+    </div >
   );
 }

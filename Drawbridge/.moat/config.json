@@ -1,0 +1,14 @@
+{
+  "version": "1.0.0",
+  "projectName": "Drawbridge",
+  "createdAt": "2026-02-08T16:22:47.556Z",
+  "streaming": {
+    "enabled": true,
+    "format": "jsonl",
+    "cursorIntegration": true
+  },
+  "ui": {
+    "autoShowMoat": true,
+    "confirmBeforeSend": false
+  }
+}

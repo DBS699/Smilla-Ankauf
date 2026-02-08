@@ -1,0 +1,82 @@
+[
+  {
+    "id": "645a3c6a-ce77-496a-9931-21ad0b3e6fd2",
+    "title": "Freeform Rectangle Task",
+    "comment": "add a reset history button here somewhere only available to admin",
+    "selector": "freeform",
+    "boundingRect": {
+      "x": 224,
+      "y": 16,
+      "w": 1617,
+      "h": 954
+    },
+    "screenshotPath": "./screenshots/moat-1770567787941-vqv39np1n.png",
+    "status": "done",
+    "timestamp": 1770567787965,
+    "boundingBox": {
+      "xyxy": {
+        "x1": 224,
+        "y1": 16,
+        "x2": 1841,
+        "y2": 970
+      },
+      "xywh": {
+        "x": 224,
+        "y": 16,
+        "width": 1617,
+        "height": 954
+      },
+      "normalized": {
+        "x": 0.10894941634241245,
+        "y": 0.01335559265442404,
+        "width": 0.7864785992217899,
+        "height": 0.7963272120200334
+      },
+      "viewport": {
+        "width": 2056,
+        "height": 1198
+      },
+      "type": "freeform"
+    }
+  },
+  {
+    "id": "e04ee749-9b6b-45e2-b4a5-6db9e38b0116",
+    "title": "Freeform Rectangle Task",
+    "comment": "sometimes when i click on settings this window pops up. why is that?",
+    "selector": "freeform",
+    "boundingRect": {
+      "x": 14,
+      "y": 11,
+      "w": 2034,
+      "h": 866
+    },
+    "screenshotPath": "./screenshots/moat-1770568202535-mkn30uuxk.png",
+    "status": "to do",
+    "timestamp": 1770568202547,
+    "boundingBox": {
+      "xyxy": {
+        "x1": 14,
+        "y1": 11,
+        "x2": 2048,
+        "y2": 877
+      },
+      "xywh": {
+        "x": 14,
+        "y": 11,
+        "width": 2034,
+        "height": 866
+      },
+      "normalized": {
+        "x": 0.006809338521400778,
+        "y": 0.009181969949916527,
+        "width": 0.9892996108949417,
+        "height": 0.7228714524207012
+      },
+      "viewport": {
+        "width": 2056,
+        "height": 1198
+      },
+      "type": "freeform"
+    }
+  }
+]
