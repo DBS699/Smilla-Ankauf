@@ -413,6 +413,23 @@ export default function SettingsPage() {
                         <Label>Kleine Fusszeile</Label>
                         <Input value={receiptSettings.sub_footer_text} onChange={(e) => updateReceiptSetting('sub_footer_text', e.target.value)} />
                       </div>
+
+                      <div className="pt-4 border-t">
+                        <Label className="flex items-center gap-2">
+                          <Printer className="w-4 h-4" />
+                          Drucker IP-Adresse (Epson TM-m30II)
+                        </Label>
+                        <div className="flex gap-2 mt-1.5">
+                          <Input
+                            placeholder="z.B. 192.168.1.123"
+                            value={receiptSettings.printer_ip || ''}
+                            onChange={(e) => updateReceiptSetting('printer_ip', e.target.value)}
+                          />
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Die IP-Adresse findest du auf dem Status-Ausdruck des Druckers (Reset-Knopf lange drücken).
+                        </p>
+                      </div>
                     </CardContent>
                   </Card>
 

@@ -115,25 +115,138 @@ export default function ReceiptPage() {
   const handleEpsonPrint = async () => {
     setIsPrinting(true);
     try {
-      // Check if Epson ePOS SDK is available
-      if (typeof window.epson !== 'undefined' && window.epson.ePOSDevice) {
-        // Epson SDK is loaded - use it
-        const ePosDev = new window.epson.ePOSDevice();
-        // Connect to printer (needs to be configured with printer IP)
-        toast.info('Verbinde mit Epson Drucker...');
-        // This would need printer IP configuration
-        toast.error('Bitte Drucker-IP in Einstellungen konfigurieren');
-      } else {
-        // Fallback: Open print dialog with receipt-optimized settings
+      // 1. Check SDK availability
+      if (typeof window.epson === 'undefined' || !window.epson.ePOSDevice) {
         toast.info('Epson SDK nicht geladen - verwende Browser-Druck');
         window.print();
+        setIsPrinting(false);
+        return;
       }
+
+      // 2. Check IP Configuration
+      if (!settings.printer_ip) {
+        toast.error('Bitte Drucker-IP in Einstellungen konfigurieren', {
+          action: {
+            label: 'Einstellungen',
+            onClick: () => window.location.href = '/settings'
+          }
+        });
+        setIsPrinting(false);
+        return;
+      }
+
+      toast.info('Verbinde mit Drucker...');
+      const ePosDev = new window.epson.ePOSDevice();
+
+      // 3. Connect to Printer
+      ePosDev.connect(settings.printer_ip, 8043, (data) => {
+        if (data === 'OK' || data === 'SSL_CONNECT_OK') {
+          ePosDev.createDevice('local_printer', ePosDev.DEVICE_TYPE_PRINTER, {
+            'crypto': false,
+            'buffer': false
+          }, (devobj, retcode) => {
+            if (retcode === 'OK') {
+              printerCallback(devobj, ePosDev);
+            } else {
+              toast.error(`Drucker-Fehler: ${retcode}`);
+              setIsPrinting(false);
+            }
+          });
+        } else {
+          toast.error(`Verbindung fehlgeschlagen: ${data}`);
+          setIsPrinting(false);
+        }
+      });
+
     } catch (error) {
       console.error('Epson print error:', error);
-      toast.error('Druckfehler');
-    } finally {
+      toast.error('Druckfehler (System)');
       setIsPrinting(false);
     }
+  };
+
+  const printerCallback = (printer, ePosDev) => {
+    // 4. Build Receipt
+    printer.addTextAlign(printer.ALIGN_CENTER);
+
+    // Store Header
+    if (settings.show_store_name) {
+      printer.addTextSize(2, 2);
+      printer.addText(`${settings.store_name}\n`);
+      printer.addTextSize(1, 1);
+    }
+
+    if (settings.show_address) {
+      printer.addText(`${settings.store_address}\n`);
+      printer.addText(`${settings.store_city}\n`);
+    }
+    if (settings.show_phone) {
+      printer.addText(`${settings.store_phone}\n`);
+    }
+
+    printer.addFeedLine(1);
+    printer.addTextDouble(true, true);
+    printer.addText('ANKAUFSQUITTUNG\n');
+    printer.addTextDouble(false, false);
+
+    if (settings.show_date) {
+      printer.addText(`${formatDate(purchase.timestamp)} ${formatTime(purchase.timestamp)}\n`);
+    }
+    if (settings.show_receipt_id) {
+      printer.addText(`Nr. ${purchase.id.slice(0, 8).toUpperCase()}\n`);
+    }
+
+    printer.addFeedLine(1);
+    printer.addTextAlign(printer.ALIGN_LEFT);
+    printer.addText('------------------------------------------\n');
+
+    // Items
+    purchase.items.forEach(item => {
+      printer.addTextSize(1, 1);
+      printer.addTextStyle(false, false, true, undefined); // Bold
+      printer.addText(`${item.category}\n`);
+      printer.addTextStyle(false, false, false, undefined); // Normal
+
+      if (settings.show_item_details) {
+        printer.addText(`${item.price_level} / ${item.condition}\n`);
+      }
+
+      // Price aligned right (simulated with spaces or tabs if needed, but simple text for now)
+      printer.addTextAlign(printer.ALIGN_RIGHT);
+      printer.addText(`CHF ${item.price.toFixed(2)}\n`);
+      printer.addTextAlign(printer.ALIGN_LEFT);
+      printer.addFeedLine(1);
+    });
+
+    printer.addText('------------------------------------------\n');
+
+    // Total
+    printer.addTextSize(2, 2);
+    printer.addTextAlign(printer.ALIGN_RIGHT);
+    const total = purchase.items.reduce((sum, item) => sum + item.price, 0);
+    printer.addText(`TOTAL: CHF ${total.toFixed(2)}\n`);
+    printer.addTextSize(1, 1);
+    printer.addTextAlign(printer.ALIGN_CENTER);
+
+    printer.addFeedLine(1);
+
+    // Footer
+    if (settings.show_footer) {
+      printer.addText(`${settings.footer_text}\n`);
+      printer.addText(`${settings.sub_footer_text}\n`);
+    }
+
+    printer.addFeedLine(2);
+    printer.addCut(printer.CUT_FEED);
+
+    // 5. Send & Disconnect
+    printer.send();
+    // Allow time for printing before disconnect (optional, ePOS usually handles this)
+    setTimeout(() => {
+      ePosDev.disconnect();
+      setIsPrinting(false);
+      toast.success('Gedruckt!');
+    }, 1000);
   };
 
   if (loading) {
