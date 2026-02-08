@@ -150,8 +150,7 @@ export default function ReceiptPage() {
         }
 
         // Divider
-        doc.setLineWidth(0.1);
-        doc.line(margin, y, width - margin, y);
+        doc.text('================================', width / 2, y, { align: 'center' });
         y += 6;
 
         // Title
@@ -171,7 +170,7 @@ export default function ReceiptPage() {
           y += 6;
         }
 
-        doc.line(margin, y, width - margin, y);
+        doc.text('--------------------------------', width / 2, y, { align: 'center' });
         y += 6;
 
         // --- ITEMS ---
@@ -188,10 +187,16 @@ export default function ReceiptPage() {
           y += 5;
 
           // Details (Light/Small)
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(8);
+
           if (settings.show_item_details) {
-            doc.setFont('helvetica', 'normal');
-            doc.setFontSize(8);
             doc.text(`${item.price_level} / ${item.condition}`, margin, y);
+            y += 4;
+          }
+
+          if (settings.show_relevance && item.relevance) {
+            doc.text(item.relevance, margin, y);
             y += 4;
           }
 
@@ -201,8 +206,19 @@ export default function ReceiptPage() {
         });
 
         y += 2;
-        doc.line(margin, y, width - margin, y);
+        doc.text('--------------------------------', width / 2, y, { align: 'center' });
         y += 6;
+
+        // --- SUMMARY (Total items) ---
+        if (settings.show_item_count) {
+          doc.setFontSize(9);
+          const itemCount = purchase.items.length;
+          doc.text(`Artikel:`, margin, y);
+          doc.text(`${itemCount}`, width - margin, y, { align: 'right' });
+          y += 4;
+          doc.text('================================', width / 2, y, { align: 'center' });
+          y += 6;
+        }
 
         // --- TOTAL ---
         doc.setFont('helvetica', 'bold');
@@ -213,9 +229,13 @@ export default function ReceiptPage() {
         doc.text(`CHF ${total.toFixed(2)}`, width - margin, y, { align: 'right' });
         y += 10;
 
-        // --- FOOTER ---
+        // Divider under total
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(9);
+        doc.text('================================', width / 2, y, { align: 'center' });
+        y += 6;
+
+        // --- FOOTER ---
         if (settings.show_footer) {
           doc.text(settings.footer_text, width / 2, y, { align: 'center' });
           y += 5;
