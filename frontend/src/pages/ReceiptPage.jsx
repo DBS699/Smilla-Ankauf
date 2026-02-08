@@ -117,31 +117,38 @@ export default function ReceiptPage() {
     setIsPrinting(true);
 
     try {
-      // 1. Generate PDF Blob
+      // 1. Calculate Dynamic Height
+      // Get the actual height of the receipt content + small buffer
+      const contentHeight = receiptRef.current.offsetHeight;
+      const contentHeightMm = (contentHeight * 25.4) / 96; // px to mm approx
+
       const scaleFactor = receiptScale / 100;
       const widthPx = (receiptWidth / 25.4) * 96 * scaleFactor;
 
       const opt = {
         margin: 0,
         filename: `Quittung_${purchase.id.slice(0, 8)}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
+        image: { type: 'png', quality: 1.0 }, // PNG for sharper text
         html2canvas: {
-          scale: 2,
+          scale: 4, // Higher scale for crisp text
           useCORS: true,
           width: widthPx,
-          windowWidth: widthPx, // Critical for consistent rendering
+          windowWidth: widthPx,
+          backgroundColor: '#ffffff', // Ensure white background
+          logging: false
         },
         jsPDF: {
           unit: 'mm',
-          format: [receiptWidth, 1000], // Long strip format (auto-height simulated)
-          orientation: 'portrait'
+          format: [receiptWidth, contentHeightMm + 10], // Exact height + 10mm buffer
+          orientation: 'portrait',
+          compress: true
         }
       };
 
       const pdfBlob = await html2pdf().set(opt).from(receiptRef.current).output('blob');
       const file = new File([pdfBlob], opt.filename, { type: 'application/pdf' });
 
-      // 2. Share via Web Share API (Mobile/Tablet)
+      // 2. Share via Web Share API
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({
           files: [file],
@@ -150,14 +157,13 @@ export default function ReceiptPage() {
         });
         toast.success('An Drucker-App gesendet!');
       } else {
-        // Fallback: Download for manual open
         const url = URL.createObjectURL(pdfBlob);
         const a = document.createElement('a');
         a.href = url;
         a.download = opt.filename;
         a.click();
         URL.revokeObjectURL(url);
-        toast.info('PDF heruntergeladen - bitte in Drucker-App öffnen');
+        toast.info('PDF heruntergeladen');
       }
 
     } catch (error) {

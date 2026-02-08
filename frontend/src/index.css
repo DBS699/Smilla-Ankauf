@@ -192,23 +192,31 @@ code {
     /* Boost font sizes for thermal print readability */
     .print-area .store-name {
         font-size: 16pt !important;
+        font-weight: 900 !important;
     }
 
     .print-area .receipt-title {
         font-size: 14pt !important;
+        font-weight: 800 !important;
     }
 
     .print-area .receipt-items,
     .print-area .receipt-item {
         font-size: 11pt !important;
+        font-weight: 600 !important;
     }
 
     .print-area .receipt-total {
         font-size: 14pt !important;
+        font-weight: 900 !important;
     }
 
-    .print-area .receipt-footer {
-        font-size: 10pt !important;
+    /* Ensure Pure Black for Thermal Printing */
+    .print-area * {
+        color: black !important;
+        text-shadow: none !important;
+        -webkit-font-smoothing: none !important;
+        /* Sharper edges */
     }
 
     .no-print {
