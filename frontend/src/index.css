@@ -354,3 +354,64 @@ code {
 .sidebar-shadow {
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
 }
+
+/* ============================================ */
+/* Vertical Slider Styles (Radix UI)           */
+/* ============================================ */
+
+/* Slider Root - base horizontal styles */
+.slider-root {
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+/* Slider Root - vertical orientation */
+.slider-root[data-orientation="vertical"] {
+    flex-direction: column;
+    width: 20px;
+    height: 100%;
+}
+
+/* Slider Track - base styles */
+.slider-track {
+    position: relative;
+    flex-grow: 1;
+    border-radius: 9999px;
+}
+
+/* Track horizontal */
+.slider-track[data-orientation="horizontal"] {
+    height: 6px;
+    width: 100%;
+}
+
+/* Track vertical */
+.slider-track[data-orientation="vertical"] {
+    width: 6px;
+    height: 100%;
+}
+
+/* Slider Range (fill) - base styles */
+.slider-range {
+    position: absolute;
+    border-radius: 9999px;
+}
+
+/* Range horizontal */
+.slider-range[data-orientation="horizontal"] {
+    height: 100%;
+}
+
+/* Range vertical - fills full width of track */
+.slider-range[data-orientation="vertical"] {
+    width: 100%;
+}
+
+/* Slider Thumb */
+.slider-thumb {
+    display: block;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+}

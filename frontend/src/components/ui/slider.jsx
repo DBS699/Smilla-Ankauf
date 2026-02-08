@@ -3,36 +3,21 @@ import * as SliderPrimitive from "@radix-ui/react-slider"
 
 import { cn } from "@/lib/utils"
 
-const Slider = React.forwardRef(({ className, orientation = "horizontal", ...props }, ref) => {
-  const isVertical = orientation === "vertical";
-
-  return (
-    <SliderPrimitive.Root
-      ref={ref}
-      orientation={orientation}
-      className={cn(
-        "relative flex touch-none select-none",
-        isVertical ? "flex-col h-full w-4 items-center" : "w-full items-center",
-        className
-      )}
-      {...props}>
-      <SliderPrimitive.Track
-        className={cn(
-          "relative grow overflow-hidden rounded-full bg-primary/20",
-          isVertical ? "w-1.5 h-full" : "h-1.5 w-full"
-        )}>
-        <SliderPrimitive.Range
-          className={cn(
-            "absolute bg-primary",
-            isVertical ? "w-full left-0 right-0" : "h-full top-0 bottom-0"
-          )}
-        />
-      </SliderPrimitive.Track>
-      <SliderPrimitive.Thumb
-        className="block h-5 w-5 rounded-full border-2 border-primary bg-background shadow-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50" />
-    </SliderPrimitive.Root>
-  );
-})
+const Slider = React.forwardRef(({ className, orientation = "horizontal", ...props }, ref) => (
+  <SliderPrimitive.Root
+    ref={ref}
+    orientation={orientation}
+    className={cn(
+      "slider-root relative flex touch-none select-none",
+      className
+    )}
+    {...props}>
+    <SliderPrimitive.Track className="slider-track relative grow overflow-hidden rounded-full bg-primary/20">
+      <SliderPrimitive.Range className="slider-range absolute bg-primary" />
+    </SliderPrimitive.Track>
+    <SliderPrimitive.Thumb className="slider-thumb block rounded-full border-2 border-primary bg-background shadow-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50" />
+  </SliderPrimitive.Root>
+))
 Slider.displayName = SliderPrimitive.Root.displayName
 
 export { Slider }
