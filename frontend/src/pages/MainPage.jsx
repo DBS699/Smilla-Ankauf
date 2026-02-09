@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Shirt, Layers, Ruler, Briefcase, Scissors,
-  Dumbbell, Waves, ShoppingBag, Trash2, History,
+  Dumbbell, Waves, ShoppingBag, Trash2, History, Users, Wallet,
   Plus, X, Check, Settings, Zap, HelpCircle, ExternalLink, LogOut, User,
   Crown, Star, Heart, Sparkles, Gem, Gift, Tag, Minus, Sun, Moon, Info,
   Umbrella, CloudRain, Snowflake, Ghost, Coffee, Camera, Watch, Glasses,
@@ -113,6 +113,13 @@ export default function MainPage() {
   const [isCheckingPrice, setIsCheckingPrice] = useState(false);
   const [customCategories, setCustomCategories] = useState([]);
   const [colors, setColors] = useState(DEFAULT_COLORS);
+
+  // Credit customer states
+  const [creditEnabled, setCreditEnabled] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [customerSearch, setCustomerSearch] = useState('');
+  const [customerResults, setCustomerResults] = useState([]);
+  const [isSearchingCustomers, setIsSearchingCustomers] = useState(false);
   const [categoryIcons, setCategoryIcons] = useState({});
   const [hiddenCategories, setHiddenCategories] = useState([]);
 
@@ -318,13 +325,41 @@ export default function MainPage() {
 
   const clearCart = () => {
     setCart([]);
+    setCreditEnabled(false);
+    setSelectedCustomer(null);
+    setCustomerSearch('');
   };
 
   const cartTotal = cart.reduce((sum, item) => sum + item.price, 0);
 
+  // Search customers for credit mode
+  const searchCustomers = async (search) => {
+    setCustomerSearch(search);
+    if (search.length < 2) {
+      setCustomerResults([]);
+      return;
+    }
+
+    try {
+      setIsSearchingCustomers(true);
+      const results = await api.getCustomers(search);
+      setCustomerResults(results);
+    } catch (error) {
+      console.error('Error searching customers:', error);
+    } finally {
+      setIsSearchingCustomers(false);
+    }
+  };
+
   const handleCheckout = async () => {
     if (cart.length === 0) {
       toast.error('Warenkorb ist leer');
+      return;
+    }
+
+    // Validate credit mode
+    if (creditEnabled && !selectedCustomer) {
+      toast.error('Bitte wähle einen Kunden für die Gutschrift');
       return;
     }
 
@@ -338,9 +373,21 @@ export default function MainPage() {
         price: item.price,
       }));
 
-      const purchase = await api.createPurchase(items);
-      toast.success('Ankauf gespeichert!');
+      // Use credit-enabled purchase if customer selected
+      const purchase = creditEnabled && selectedCustomer
+        ? await api.createPurchaseWithCredit(items, selectedCustomer.id, user?.username)
+        : await api.createPurchase(items);
+
+      if (creditEnabled && selectedCustomer) {
+        toast.success(`${cartTotal.toFixed(2)} CHF auf Konto von ${selectedCustomer.first_name} ${selectedCustomer.last_name} gutgeschrieben!`);
+      } else {
+        toast.success('Ankauf gespeichert!');
+      }
+
       setCart([]);
+      setCreditEnabled(false);
+      setSelectedCustomer(null);
+      setCustomerSearch('');
       loadTodayStats();
       setIsMobileCartOpen(false);
 
@@ -437,14 +484,124 @@ export default function MainPage() {
             CHF {cartTotal.toFixed(2)}
           </span>
         </div>
+
+        {/* Credit Toggle */}
+        {cart.length > 0 && (
+          <div className="mb-4 p-3 bg-muted/50 rounded-lg">
+            <div
+              className="flex items-center justify-between cursor-pointer"
+              onClick={() => {
+                setCreditEnabled(!creditEnabled);
+                if (creditEnabled) {
+                  setSelectedCustomer(null);
+                  setCustomerSearch('');
+                }
+              }}
+            >
+              <div className="flex items-center gap-2">
+                <Wallet className={`w-5 h-5 ${creditEnabled ? 'text-green-600' : 'text-muted-foreground'}`} />
+                <span className={`text-sm font-medium ${creditEnabled ? 'text-green-600' : ''}`}>
+                  Gutschrift auf Kundenkonto
+                </span>
+              </div>
+              <div className={`w-10 h-6 rounded-full transition-colors ${creditEnabled ? 'bg-green-500' : 'bg-gray-300'}`}>
+                <div className={`w-5 h-5 rounded-full bg-white shadow transform transition-transform mt-0.5 ${creditEnabled ? 'translate-x-4.5 ml-0.5' : 'translate-x-0.5'}`} />
+              </div>
+            </div>
+
+            {/* Customer Selection */}
+            {creditEnabled && (
+              <div className="mt-3 space-y-2">
+                {selectedCustomer ? (
+                  <div className="flex items-center justify-between p-2 bg-green-100 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-green-200 flex items-center justify-center">
+                        <User className="w-4 h-4 text-green-700" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-sm text-green-800">
+                          {selectedCustomer.first_name} {selectedCustomer.last_name}
+                        </p>
+                        <p className="text-xs text-green-600">
+                          Guthaben: {selectedCustomer.current_balance?.toFixed(2) || '0.00'} CHF
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6"
+                      onClick={() => {
+                        setSelectedCustomer(null);
+                        setCustomerSearch('');
+                      }}
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <Input
+                      placeholder="Kunde suchen..."
+                      value={customerSearch}
+                      onChange={(e) => searchCustomers(e.target.value)}
+                      className="h-9 text-sm"
+                    />
+                    {isSearchingCustomers && (
+                      <p className="text-xs text-muted-foreground">Suchen...</p>
+                    )}
+                    {customerResults.length > 0 && (
+                      <div className="max-h-32 overflow-y-auto space-y-1">
+                        {customerResults.slice(0, 5).map(c => (
+                          <div
+                            key={c.id}
+                            className="flex items-center justify-between p-2 hover:bg-muted rounded cursor-pointer"
+                            onClick={() => {
+                              setSelectedCustomer(c);
+                              setCustomerSearch('');
+                              setCustomerResults([]);
+                            }}
+                          >
+                            <span className="text-sm">{c.first_name} {c.last_name}</span>
+                            <span className="text-xs text-muted-foreground">{c.current_balance?.toFixed(2)} CHF</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {customerSearch.length >= 2 && customerResults.length === 0 && !isSearchingCustomers && (
+                      <div className="text-center py-2">
+                        <p className="text-xs text-muted-foreground">Kein Kunde gefunden</p>
+                        <Button
+                          variant="link"
+                          size="sm"
+                          className="text-xs h-6 p-0"
+                          onClick={() => navigate('/customers')}
+                        >
+                          <Plus className="w-3 h-3 mr-1" />
+                          Neuen Kunden erstellen
+                        </Button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         <Button
-          className="w-full h-14 text-lg touch-btn"
-          disabled={cart.length === 0 || isSubmitting}
+          className={`w-full h-14 text-lg touch-btn ${creditEnabled && selectedCustomer ? 'bg-green-600 hover:bg-green-700' : ''}`}
+          disabled={cart.length === 0 || isSubmitting || (creditEnabled && !selectedCustomer)}
           onClick={handleCheckout}
           data-testid="checkout-btn"
         >
           {isSubmitting ? (
             'Speichern...'
+          ) : creditEnabled && selectedCustomer ? (
+            <>
+              <Wallet className="w-5 h-5 mr-2" />
+              Gutschrift erstellen
+            </>
           ) : (
             <>
               <Check className="w-5 h-5 mr-2" />
@@ -504,6 +661,13 @@ export default function MainPage() {
               <Button variant="outline" size="sm" data-testid="history-link" className="px-2 sm:px-3">
                 <History className="w-4 h-4 sm:mr-2" />
                 <span className="hidden sm:inline">Historie</span>
+              </Button>
+            </Link>
+
+            <Link to="/customers">
+              <Button variant="outline" size="sm" data-testid="customers-link" className="px-2 sm:px-3">
+                <Users className="w-4 h-4 sm:mr-2" />
+                <span className="hidden sm:inline">Kunden</span>
               </Button>
             </Link>
 

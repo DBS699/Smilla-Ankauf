@@ -192,6 +192,73 @@ export const api = {
   updateReceiptSettings: async (receiptSettings) => {
     const response = await apiClient.put('/settings/receipt', receiptSettings);
     return response.data;
+  },
+
+  // ============== Customer APIs ==============
+
+  // Get all customers (with optional search)
+  getCustomers: async (search = '') => {
+    const params = search ? { search } : {};
+    const response = await apiClient.get('/customers', { params });
+    return response.data;
+  },
+
+  // Create a new customer
+  createCustomer: async (customerData) => {
+    const response = await apiClient.post('/customers', customerData);
+    return response.data;
+  },
+
+  // Get single customer with transactions
+  getCustomer: async (id) => {
+    const response = await apiClient.get(`/customers/${id}`);
+    return response.data;
+  },
+
+  // Update customer
+  updateCustomer: async (id, customerData) => {
+    const response = await apiClient.put(`/customers/${id}`, customerData);
+    return response.data;
+  },
+
+  // Delete customer
+  deleteCustomer: async (id) => {
+    const response = await apiClient.delete(`/customers/${id}`);
+    return response.data;
+  },
+
+  // Create transaction (manual credit/debit)
+  createTransaction: async (customerId, transactionData, staffUsername = 'system') => {
+    const response = await apiClient.post(
+      `/customers/${customerId}/transactions?staff_username=${encodeURIComponent(staffUsername)}`,
+      transactionData
+    );
+    return response.data;
+  },
+
+  // Export customers to Excel
+  exportCustomersExcel: async () => {
+    const response = await axios.get(`${API}/customers/export/excel`, {
+      responseType: 'blob'
+    });
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', 'kunden_guthaben_export.xlsx');
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  },
+
+  // Create purchase with credit option
+  createPurchaseWithCredit: async (items, creditCustomerId = null, staffUsername = null) => {
+    const response = await apiClient.post('/purchases', {
+      items,
+      credit_customer_id: creditCustomerId,
+      staff_username: staffUsername
+    });
+    return response.data;
   }
 };
 

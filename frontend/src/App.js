@@ -8,10 +8,12 @@ import HistoryPage from "@/pages/HistoryPage";
 import ReceiptPage from "@/pages/ReceiptPage";
 import SettingsPage from "@/pages/SettingsPage";
 import LoginPage from "@/pages/LoginPage";
+import CustomerPage from "@/pages/CustomerPage";
+import CustomerDetailPage from "@/pages/CustomerDetailPage";
 import api from "@/lib/api";
 
 // Background Context
-const BackgroundContext = createContext({ darkMode: false, setDarkMode: () => {} });
+const BackgroundContext = createContext({ darkMode: false, setDarkMode: () => { } });
 export const useBackground = () => useContext(BackgroundContext);
 
 function BackgroundProvider({ children }) {
@@ -41,7 +43,7 @@ function BackgroundProvider({ children }) {
 // Protected Route wrapper
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
-  
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -49,17 +51,17 @@ function ProtectedRoute({ children }) {
       </div>
     );
   }
-  
+
   if (!user) {
     return <Navigate to="/login" replace />;
   }
-  
+
   return children;
 }
 
 function AppRoutes() {
   const { user } = useAuth();
-  
+
   return (
     <Routes>
       <Route path="/login" element={user ? <Navigate to="/" replace /> : <LoginPage />} />
@@ -67,13 +69,15 @@ function AppRoutes() {
       <Route path="/history" element={<ProtectedRoute><HistoryPage /></ProtectedRoute>} />
       <Route path="/receipt/:id" element={<ReceiptPage />} />
       <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+      <Route path="/customers" element={<ProtectedRoute><CustomerPage /></ProtectedRoute>} />
+      <Route path="/customers/:id" element={<ProtectedRoute><CustomerDetailPage /></ProtectedRoute>} />
     </Routes>
   );
 }
 
 function AppContent() {
   const { darkMode } = useBackground();
-  
+
   const bgClass = darkMode ? 'dark-mode' : 'light-mode';
 
   return (

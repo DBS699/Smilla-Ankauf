@@ -78,12 +78,16 @@ class Purchase(BaseModel):
 
 class PurchaseCreate(BaseModel):
     items: List[PurchaseItemCreate]
+    credit_customer_id: Optional[str] = None  # If set, credit to this customer instead of cash
+    staff_username: Optional[str] = None
 
 class PurchaseResponse(BaseModel):
     id: str
     items: List[PurchaseItem]
     total: float
     timestamp: str
+    credit_customer_id: Optional[str] = None
+    credit_customer_name: Optional[str] = None
 
 class DailyStats(BaseModel):
     date: str
@@ -94,6 +98,62 @@ class MonthlyStats(BaseModel):
     month: str
     count: int
     total: float
+
+# ============== Customer & Credit Models ==============
+
+class CustomerCreate(BaseModel):
+    first_name: str
+    last_name: str
+    email: str
+    address: Optional[str] = None
+    phone: Optional[str] = None
+
+class Customer(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    first_name: str
+    last_name: str
+    email: str
+    address: Optional[str] = None
+    phone: Optional[str] = None
+    current_balance: float = 0.0
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class CustomerResponse(BaseModel):
+    id: str
+    first_name: str
+    last_name: str
+    email: str
+    address: Optional[str] = None
+    phone: Optional[str] = None
+    current_balance: float
+    created_at: str
+
+class TransactionCreate(BaseModel):
+    amount: float
+    type: str  # "credit" or "debit"
+    description: Optional[str] = None
+    reference_id: Optional[str] = None
+
+class CreditTransaction(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    customer_id: str
+    amount: float  # Positive = credit, Negative = debit
+    type: str  # "purchase_credit", "payout", "manual_credit", "manual_debit"
+    description: Optional[str] = None
+    reference_id: Optional[str] = None  # e.g., purchase_id
+    staff_username: str
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class TransactionResponse(BaseModel):
+    id: str
+    customer_id: str
+    amount: float
+    type: str
+    description: Optional[str]
+    reference_id: Optional[str]
+    staff_username: str
+    timestamp: str
+
 
 # ============== Basic Routes ==============
 
@@ -265,11 +325,45 @@ async def create_purchase(purchase_data: PurchaseCreate):
     
     purchase = Purchase(items=items, total=total)
     
+    # Check if this should be credited to a customer
+    credit_customer_name = None
+    if purchase_data.credit_customer_id:
+        customer = await db.customers.find_one({"id": purchase_data.credit_customer_id})
+        if not customer:
+            raise HTTPException(status_code=404, detail="Kunde nicht gefunden")
+        
+        credit_customer_name = f"{customer.get('first_name', '')} {customer.get('last_name', '')}"
+        
+        # Create credit transaction
+        transaction = CreditTransaction(
+            customer_id=purchase_data.credit_customer_id,
+            amount=total,  # Positive = credit
+            type="purchase_credit",
+            description=f"Ankauf #{purchase.id[:8].upper()} - {len(items)} Artikel",
+            reference_id=purchase.id,
+            staff_username=purchase_data.staff_username or "system"
+        )
+        
+        transaction_doc = transaction.model_dump()
+        transaction_doc["timestamp"] = transaction.timestamp
+        await db.credit_transactions.insert_one(transaction_doc)
+        
+        # Update customer balance
+        new_balance = customer.get("current_balance", 0) + total
+        await db.customers.update_one(
+            {"id": purchase_data.credit_customer_id},
+            {"$set": {"current_balance": new_balance}}
+        )
+        
+        logger.info(f"Credited {total} CHF to customer {credit_customer_name} for purchase {purchase.id}")
+    
     doc = {
         "id": purchase.id,
         "items": [item.model_dump() for item in items],
         "total": total,
-        "timestamp": purchase.timestamp.isoformat()
+        "timestamp": purchase.timestamp.isoformat(),
+        "credit_customer_id": purchase_data.credit_customer_id,
+        "credit_customer_name": credit_customer_name
     }
     
     await db.purchases.insert_one(doc)
@@ -278,7 +372,9 @@ async def create_purchase(purchase_data: PurchaseCreate):
         id=purchase.id,
         items=items,
         total=total,
-        timestamp=purchase.timestamp.isoformat()
+        timestamp=purchase.timestamp.isoformat(),
+        credit_customer_id=purchase_data.credit_customer_id,
+        credit_customer_name=credit_customer_name
     )
 
 @api_router.get("/purchases", response_model=List[PurchaseResponse])
@@ -589,6 +685,241 @@ async def update_receipt_settings(data: dict):
         upsert=True
     )
     return {"message": "Quittungs-Einstellungen gespeichert"}
+
+# ============== Customer Routes ==============
+
+@api_router.get("/customers", response_model=List[CustomerResponse])
+async def get_customers(search: Optional[str] = None):
+    """Get all customers, optionally filtered by search term (name or email)."""
+    query = {}
+    if search:
+        search_regex = {"$regex": search, "$options": "i"}
+        query = {"$or": [
+            {"first_name": search_regex},
+            {"last_name": search_regex},
+            {"email": search_regex}
+        ]}
+    
+    customers = await db.customers.find(query, {"_id": 0}).sort("last_name", 1).to_list(500)
+    
+    # Convert datetime to string for response
+    for c in customers:
+        if isinstance(c.get("created_at"), datetime):
+            c["created_at"] = c["created_at"].isoformat()
+        elif "created_at" not in c:
+            c["created_at"] = datetime.now(timezone.utc).isoformat()
+    
+    return customers
+
+@api_router.post("/customers", response_model=CustomerResponse)
+async def create_customer(data: CustomerCreate):
+    """Create a new customer."""
+    # Check if email already exists
+    existing = await db.customers.find_one({"email": data.email.lower().strip()})
+    if existing:
+        raise HTTPException(status_code=400, detail="Ein Kunde mit dieser E-Mail existiert bereits")
+    
+    customer = Customer(
+        first_name=data.first_name.strip(),
+        last_name=data.last_name.strip(),
+        email=data.email.lower().strip(),
+        address=data.address.strip() if data.address else None,
+        phone=data.phone.strip() if data.phone else None
+    )
+    
+    doc = customer.model_dump()
+    doc["created_at"] = customer.created_at
+    await db.customers.insert_one(doc)
+    
+    return CustomerResponse(
+        id=customer.id,
+        first_name=customer.first_name,
+        last_name=customer.last_name,
+        email=customer.email,
+        address=customer.address,
+        phone=customer.phone,
+        current_balance=customer.current_balance,
+        created_at=customer.created_at.isoformat()
+    )
+
+@api_router.get("/customers/{customer_id}")
+async def get_customer(customer_id: str):
+    """Get a single customer with their transaction history."""
+    customer = await db.customers.find_one({"id": customer_id}, {"_id": 0})
+    if not customer:
+        raise HTTPException(status_code=404, detail="Kunde nicht gefunden")
+    
+    # Get all transactions for this customer
+    transactions = await db.credit_transactions.find(
+        {"customer_id": customer_id}, {"_id": 0}
+    ).sort("timestamp", -1).to_list(1000)
+    
+    # Calculate actual balance from transactions (source of truth)
+    actual_balance = sum(t["amount"] for t in transactions)
+    
+    # Update cached balance if different
+    if customer.get("current_balance", 0) != actual_balance:
+        await db.customers.update_one(
+            {"id": customer_id},
+            {"$set": {"current_balance": actual_balance}}
+        )
+    
+    # Format timestamps
+    if isinstance(customer.get("created_at"), datetime):
+        customer["created_at"] = customer["created_at"].isoformat()
+    
+    for t in transactions:
+        if isinstance(t.get("timestamp"), datetime):
+            t["timestamp"] = t["timestamp"].isoformat()
+    
+    return {
+        **customer,
+        "current_balance": actual_balance,
+        "transactions": transactions
+    }
+
+@api_router.put("/customers/{customer_id}")
+async def update_customer(customer_id: str, data: CustomerCreate):
+    """Update customer details."""
+    existing = await db.customers.find_one({"id": customer_id})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Kunde nicht gefunden")
+    
+    # Check email uniqueness (if changed)
+    if data.email.lower().strip() != existing.get("email"):
+        email_exists = await db.customers.find_one({"email": data.email.lower().strip(), "id": {"$ne": customer_id}})
+        if email_exists:
+            raise HTTPException(status_code=400, detail="Diese E-Mail wird bereits verwendet")
+    
+    await db.customers.update_one(
+        {"id": customer_id},
+        {"$set": {
+            "first_name": data.first_name.strip(),
+            "last_name": data.last_name.strip(),
+            "email": data.email.lower().strip(),
+            "address": data.address.strip() if data.address else None,
+            "phone": data.phone.strip() if data.phone else None
+        }}
+    )
+    
+    return {"message": "Kunde aktualisiert"}
+
+@api_router.delete("/customers/{customer_id}")
+async def delete_customer(customer_id: str):
+    """Delete a customer and their transactions."""
+    result = await db.customers.delete_one({"id": customer_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Kunde nicht gefunden")
+    
+    # Also delete their transactions
+    await db.credit_transactions.delete_many({"customer_id": customer_id})
+    
+    return {"message": "Kunde gelöscht"}
+
+@api_router.post("/customers/{customer_id}/transactions")
+async def create_transaction(customer_id: str, data: TransactionCreate, staff_username: str = "system"):
+    """Create a manual transaction (credit or debit)."""
+    customer = await db.customers.find_one({"id": customer_id})
+    if not customer:
+        raise HTTPException(status_code=404, detail="Kunde nicht gefunden")
+    
+    # Determine amount sign based on type
+    amount = abs(data.amount)
+    if data.type == "debit":
+        amount = -amount
+    
+    transaction = CreditTransaction(
+        customer_id=customer_id,
+        amount=amount,
+        type=f"manual_{data.type}",
+        description=data.description,
+        reference_id=data.reference_id or f"MANUAL-{str(uuid.uuid4())[:8].upper()}",
+        staff_username=staff_username
+    )
+    
+    doc = transaction.model_dump()
+    doc["timestamp"] = transaction.timestamp
+    await db.credit_transactions.insert_one(doc)
+    
+    # Update cached balance
+    new_balance = customer.get("current_balance", 0) + amount
+    await db.customers.update_one(
+        {"id": customer_id},
+        {"$set": {"current_balance": new_balance}}
+    )
+    
+    return {
+        "message": "Transaktion erstellt",
+        "transaction_id": transaction.id,
+        "new_balance": new_balance
+    }
+
+@api_router.get("/customers/export/excel")
+async def export_customers_excel():
+    """Export all customers and their transactions as Excel file."""
+    customers = await db.customers.find({}, {"_id": 0}).to_list(10000)
+    transactions = await db.credit_transactions.find({}, {"_id": 0}).to_list(50000)
+    
+    # Create customers sheet data
+    customer_rows = []
+    for c in customers:
+        customer_rows.append({
+            "ID": c.get("id", "")[:8].upper(),
+            "Nachname": c.get("last_name", ""),
+            "Vorname": c.get("first_name", ""),
+            "E-Mail": c.get("email", ""),
+            "Adresse": c.get("address", "") or "",
+            "Telefon": c.get("phone", "") or "",
+            "Aktuelles Guthaben (CHF)": c.get("current_balance", 0),
+            "Erstellt am": str(c.get("created_at", ""))[:10]
+        })
+    
+    # Create transactions sheet data
+    transaction_rows = []
+    customer_map = {c["id"]: f"{c.get('first_name', '')} {c.get('last_name', '')}" for c in customers}
+    for t in transactions:
+        transaction_rows.append({
+            "Datum": str(t.get("timestamp", ""))[:10],
+            "Zeit": str(t.get("timestamp", ""))[11:16] if len(str(t.get("timestamp", ""))) > 16 else "",
+            "Kunde": customer_map.get(t.get("customer_id", ""), "Unbekannt"),
+            "Typ": t.get("type", ""),
+            "Betrag (CHF)": t.get("amount", 0),
+            "Beschreibung": t.get("description", "") or "",
+            "Referenz": t.get("reference_id", "") or "",
+            "Mitarbeiter": t.get("staff_username", "")
+        })
+    
+    # Create Excel file
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        if customer_rows:
+            pd.DataFrame(customer_rows).to_excel(writer, index=False, sheet_name='Kunden')
+        else:
+            pd.DataFrame([{"Info": "Keine Kunden vorhanden"}]).to_excel(writer, index=False, sheet_name='Kunden')
+        
+        if transaction_rows:
+            pd.DataFrame(transaction_rows).to_excel(writer, index=False, sheet_name='Transaktionen')
+        else:
+            pd.DataFrame([{"Info": "Keine Transaktionen vorhanden"}]).to_excel(writer, index=False, sheet_name='Transaktionen')
+        
+        # Summary sheet
+        summary_data = {
+            "Statistik": ["Anzahl Kunden", "Gesamtes Guthaben (CHF)", "Anzahl Transaktionen"],
+            "Wert": [
+                len(customers),
+                sum(c.get("current_balance", 0) for c in customers),
+                len(transactions)
+            ]
+        }
+        pd.DataFrame(summary_data).to_excel(writer, index=False, sheet_name='Zusammenfassung')
+    
+    output.seek(0)
+    
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=kunden_guthaben_export.xlsx"}
+    )
 
 # ============== App Setup ==============
 
