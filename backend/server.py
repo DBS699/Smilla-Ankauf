@@ -196,6 +196,9 @@ class SettingsUpdate(BaseModel):
     hidden_categories: Optional[List[str]] = None
     category_icons: Optional[dict] = None
     background: Optional[str] = None
+    darkMode: Optional[bool] = None
+    brand_examples: Optional[dict] = None
+    gemini_api_key: Optional[str] = None
 
 class ReceiptSettingsUpdate(BaseModel):
     class Config:
@@ -862,6 +865,10 @@ async def get_settings(current_user: dict = Depends(get_current_user)):
     
     # Security: Do not expose danger_zone_password
     settings.pop("danger_zone_password", None)
+    # Mask gemini_api_key — only return last 4 chars for UI confirmation
+    if settings.get("gemini_api_key"):
+        key = settings["gemini_api_key"]
+        settings["gemini_api_key"] = "••••••••••" + key[-4:] if len(key) > 4 else "••••"
     return settings
 
 @api_router.put("/settings")
