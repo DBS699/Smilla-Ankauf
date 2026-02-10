@@ -723,7 +723,8 @@ async def get_daily_stats(days: int = 30, current_user: dict = Depends(get_curre
     
     daily_data = {}
     for p in purchases:
-        date_str = p["timestamp"][:10]
+        ts = p["timestamp"]
+        date_str = ts.strftime("%Y-%m-%d") if hasattr(ts, 'strftime') else str(ts)[:10]
         if date_str not in daily_data:
             daily_data[date_str] = {"count": 0, "total": 0.0}
         daily_data[date_str]["count"] += 1
@@ -746,7 +747,8 @@ async def get_monthly_stats(months: int = 12, current_user: dict = Depends(get_c
     
     monthly_data = {}
     for p in purchases:
-        month_str = p["timestamp"][:7]
+        ts = p["timestamp"]
+        month_str = ts.strftime("%Y-%m") if hasattr(ts, 'strftime') else str(ts)[:7]
         if month_str not in monthly_data:
             monthly_data[month_str] = {"count": 0, "total": 0.0}
         monthly_data[month_str]["count"] += 1
