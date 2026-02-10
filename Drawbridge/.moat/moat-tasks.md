@@ -9,5 +9,5 @@
 
 ---
 
-_Generated: 8.2.2026, 17:43:42_
+_Generated: 10.2.2026, 11:03:16_
 _Source: moat-tasks-detail.json_

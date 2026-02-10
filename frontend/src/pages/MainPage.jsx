@@ -22,6 +22,7 @@ import { toast } from 'sonner';
 import { CATEGORIES, PRICE_LEVELS, CONDITIONS, RELEVANCE_LEVELS } from '@/lib/constants';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBackground } from '@/App';
+import { Input } from '@/components/ui/input';
 import api from '@/lib/api';
 
 // Default brand examples for price levels
