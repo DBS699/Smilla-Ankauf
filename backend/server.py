@@ -96,6 +96,7 @@ class Purchase(BaseModel):
     items: List[PurchaseItem]
     total: float
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    staff_username: str = "unknown" # Audit trail
 
 class PurchaseCreate(BaseModel):
     items: List[PurchaseItemCreate]
@@ -496,7 +497,7 @@ async def upload_price_matrix(
         raise HTTPException(status_code=400, detail=str(e))
 
 @api_router.delete("/price-matrix")
-async def clear_price_matrix(current_user: dict = Depends(get_current_user)):
+async def clear_price_matrix(current_user: dict = Depends(require_admin)): # RBAC: Admin only
     result = await db.price_matrix.delete_many({})
     return {"message": f"{result.deleted_count} Einträge gelöscht"}
 
@@ -600,7 +601,7 @@ async def get_purchase(purchase_id: str, current_user: dict = Depends(get_curren
     return purchase
 
 @api_router.delete("/purchases/{purchase_id}")
-async def delete_purchase(purchase_id: str, current_user: dict = Depends(get_current_user)):
+async def delete_purchase(purchase_id: str, current_user: dict = Depends(require_admin)): # RBAC: Admin only
     # GeBüV compliance: soft-delete to preserve audit trail
     result = await db.purchases.update_one(
         {"id": purchase_id, "deleted": {"$ne": True}},
@@ -611,7 +612,7 @@ async def delete_purchase(purchase_id: str, current_user: dict = Depends(get_cur
     return {"message": "Purchase deleted"}
 
 @api_router.delete("/purchases")
-async def delete_all_purchases(current_user: dict = Depends(get_current_user)):
+async def delete_all_purchases(current_user: dict = Depends(require_admin)): # RBAC: Admin only
     # GeBüV compliance: soft-delete to preserve audit trail
     result = await db.purchases.update_many(
         {"deleted": {"$ne": True}},
@@ -845,7 +846,7 @@ async def get_settings(current_user: dict = Depends(get_current_user)):
     settings = await db.app_settings.find_one({"type": "general"}, {"_id": 0})
     if not settings:
         return {
-            "danger_zone_password": "",
+            # "danger_zone_password": "", # Security: Do not expose password
             "colors": {
                 "luxus": "#FEF3C7",
                 "teuer": "#DBEAFE",
@@ -856,6 +857,9 @@ async def get_settings(current_user: dict = Depends(get_current_user)):
             "category_icons": {},
             "background": "paper"
         }
+    
+    # Security: Do not expose danger_zone_password
+    settings.pop("danger_zone_password", None)
     return settings
 
 @api_router.put("/settings")
@@ -1029,7 +1033,7 @@ async def update_customer(customer_id: str, data: CustomerCreate, current_user: 
     return {"message": "Kunde aktualisiert"}
 
 @api_router.delete("/customers/{customer_id}")
-async def delete_customer(customer_id: str, current_user: dict = Depends(get_current_user)):
+async def delete_customer(customer_id: str, current_user: dict = Depends(require_admin)): # RBAC: Admin only
     """Delete a customer and their transactions."""
     result = await db.customers.delete_one({"id": customer_id})
     if result.deleted_count == 0:
@@ -1041,7 +1045,7 @@ async def delete_customer(customer_id: str, current_user: dict = Depends(get_cur
     return {"message": "Kunde gelöscht"}
 
 @api_router.post("/customers/{customer_id}/transactions")
-async def create_transaction(customer_id: str, data: TransactionCreate, staff_username: str = "system", current_user: dict = Depends(get_current_user)):
+async def create_transaction(customer_id: str, data: TransactionCreate, current_user: dict = Depends(get_current_user)):
     """Create a manual transaction (credit or debit)."""
     customer = await db.customers.find_one({"id": customer_id})
     if not customer:
@@ -1058,7 +1062,7 @@ async def create_transaction(customer_id: str, data: TransactionCreate, staff_us
         type=f"manual_{data.type}",
         description=data.description,
         reference_id=data.reference_id or f"MANUAL-{str(uuid.uuid4())[:8].upper()}",
-        staff_username=staff_username
+        staff_username=current_user["username"] # Audit Trail: Force username from token
     )
     
     doc = transaction.model_dump()
@@ -1079,7 +1083,7 @@ async def create_transaction(customer_id: str, data: TransactionCreate, staff_us
     }
 
 @api_router.get("/customers/export/excel")
-async def export_customers_excel(current_user: dict = Depends(get_current_user)):
+async def export_customers_excel(current_user: dict = Depends(require_admin)): # RBAC: Admin only
     """Export all customers and their transactions as Excel file."""
     customers = await db.customers.find({}, {"_id": 0}).to_list(10000)
     transactions = await db.credit_transactions.find({}, {"_id": 0}).to_list(50000)
@@ -1113,16 +1117,31 @@ async def export_customers_excel(current_user: dict = Depends(get_current_user))
             "Mitarbeiter": t.get("staff_username", "")
         })
     
+    
+    # Security: Sanitize for Excel Injection
+    def sanitize_excel_cell(value):
+        if isinstance(value, str) and value.startswith(('=', '+', '-', '@')):
+            return "'" + value
+        return value
+
     # Create Excel file
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         if customer_rows:
-            pd.DataFrame(customer_rows).to_excel(writer, index=False, sheet_name='Kunden')
+            df_customers = pd.DataFrame(customer_rows)
+            # Apply sanitization
+            for col in df_customers.select_dtypes(include=['object']).columns:
+                df_customers[col] = df_customers[col].apply(sanitize_excel_cell)
+            df_customers.to_excel(writer, index=False, sheet_name='Kunden')
         else:
             pd.DataFrame([{"Info": "Keine Kunden vorhanden"}]).to_excel(writer, index=False, sheet_name='Kunden')
         
         if transaction_rows:
-            pd.DataFrame(transaction_rows).to_excel(writer, index=False, sheet_name='Transaktionen')
+            df_trans = pd.DataFrame(transaction_rows)
+            # Apply sanitization
+            for col in df_trans.select_dtypes(include=['object']).columns:
+                df_trans[col] = df_trans[col].apply(sanitize_excel_cell)
+            df_trans.to_excel(writer, index=False, sheet_name='Transaktionen')
         else:
             pd.DataFrame([{"Info": "Keine Transaktionen vorhanden"}]).to_excel(writer, index=False, sheet_name='Transaktionen')
         
