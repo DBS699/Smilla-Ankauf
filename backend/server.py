@@ -237,17 +237,38 @@ login_attempts = defaultdict(list)  # IP -> list of timestamps
 MAX_LOGIN_ATTEMPTS = 5
 LOGIN_WINDOW_SECONDS = 60
 
-# Hash passwords at startup (only once)
+# Hash passwords at startup
 def _hash_pw(plain: str) -> str:
     return pwd_context.hash(plain)
 
+# Critical: Validate Environment Variables
+JWT_SECRET_ENV = os.environ.get("JWT_SECRET")
+ADMIN_PW_ENV = os.environ.get("ADMIN_PASSWORD")
+SMILLA_PW_ENV = os.environ.get("SMILLA_PASSWORD")
+
+if not JWT_SECRET_ENV or JWT_SECRET_ENV == "dev-secret-change-in-production":
+    logger.warning("WARN: JWT_SECRET not set or using default. Secure in production!")
+    # In production, you might want to raise error:
+    # raise RuntimeError("JWT_SECRET must be set!")
+
+if not ADMIN_PW_ENV or ADMIN_PW_ENV == "1234":
+    # Critical Security Check
+    if os.environ.get("RAILWAY_ENVIRONMENT") == "production":
+        raise RuntimeError("CRITICAL: ADMIN_PASSWORD is missing or default '1234'. Set a secure password!")
+    logger.warning("WARN: ADMIN_PASSWORD is default '1234'. CHANGE THIS!")
+
+if not SMILLA_PW_ENV or SMILLA_PW_ENV == "1234":
+    if os.environ.get("RAILWAY_ENVIRONMENT") == "production":
+         raise RuntimeError("CRITICAL: SMILLA_PASSWORD is missing or default '1234'. Set a secure password!")
+    logger.warning("WARN: SMILLA_PASSWORD is default '1234'. CHANGE THIS!")
+
 USERS = {
     "admin": {
-        "password_hash": _hash_pw(os.environ.get("ADMIN_PASSWORD", "1234")),
+        "password_hash": _hash_pw(ADMIN_PW_ENV or "1234"),
         "role": "admin"
     },
     "smilla": {
-        "password_hash": _hash_pw(os.environ.get("SMILLA_PASSWORD", "1234")),
+        "password_hash": _hash_pw(SMILLA_PW_ENV or "1234"),
         "role": "mitarbeiter"
     }
 }
@@ -277,8 +298,21 @@ async def get_current_user(
     except JWTError:
         raise HTTPException(status_code=401, detail="Token abgelaufen oder ungültig")
 
-def check_rate_limit(client_ip: str):
+async def require_admin(current_user: dict = Depends(get_current_user)):
+    """Dependency to restrict access to admins only."""
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Nur für Administratoren")
+    return current_user
+
+def check_rate_limit(request: Request):
     """Enforce rate limiting on login attempts."""
+    # Security: Use X-Forwarded-For for proxies (Railway/Vercel)
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        client_ip = forwarded.split(",")[0]
+    else:
+        client_ip = request.client.host if request.client else "unknown"
+        
     now = time.time()
     # Clean old entries
     login_attempts[client_ip] = [
@@ -364,6 +398,18 @@ async def download_price_matrix(current_user: dict = Depends(get_current_user)):
                     })
     
     df = pd.DataFrame(rows)
+    
+    # Security: Sanitize for Excel Injection
+    # Escape cells starting with =, +, -, @
+    def sanitize_excel_cell(value):
+        if isinstance(value, str) and value.startswith(('=', '+', '-', '@')):
+            return "'" + value
+        return value
+
+    # Apply to all string columns (object dtype)
+    for col in df.select_dtypes(include=['object']).columns:
+        df[col] = df[col].apply(sanitize_excel_cell)
+        
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         df.to_excel(writer, index=False, sheet_name='Preismatrix')
@@ -381,10 +427,20 @@ async def get_price_matrix(current_user: dict = Depends(get_current_user)):
     return entries
 
 @api_router.post("/price-matrix/upload")
-async def upload_price_matrix(file: UploadFile = File(...), current_user: dict = Depends(get_current_user)):
+async def upload_price_matrix(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(require_admin) # RBAC: Admin only
+):
+    # Security: Limit file size (approx check via read/chunk) or content-length if available
+    # For now, we read safely.
+    MAX_SIZE = 5 * 1024 * 1024 # 5MB limit
+    
+    content = await file.read()
+    if len(content) > MAX_SIZE:
+        raise HTTPException(status_code=413, detail="Datei zu gross (Max 5MB)")
+        
     try:
-        contents = await file.read()
-        df = pd.read_excel(io.BytesIO(contents))
+        df = pd.read_excel(io.BytesIO(content))
         
         required_cols = ["Kategorie", "Preisniveau", "Zustand", "Relevanz", "Fixpreis"]
         if not all(col in df.columns for col in required_cols):
@@ -448,9 +504,9 @@ async def clear_price_matrix(current_user: dict = Depends(get_current_user)):
 
 @api_router.post("/purchases", response_model=PurchaseResponse)
 async def create_purchase(purchase_data: PurchaseCreate, current_user: dict = Depends(get_current_user)):
-    total = sum(item.price for item in purchase_data.items)
+    total_sum = sum(item.price for item in purchase_data.items)
     
-    items = [
+    new_items = [
         PurchaseItem(
             category=item.category,
             price_level=item.price_level,
@@ -461,7 +517,12 @@ async def create_purchase(purchase_data: PurchaseCreate, current_user: dict = De
         for item in purchase_data.items
     ]
     
-    purchase = Purchase(items=items, total=total)
+    new_purchase = Purchase(
+        items=new_items,
+        total=total_sum,
+        # Audit Trail: Force username from token, ignore client input
+        staff_username=current_user["username"]
+    )
     
     # Check if this should be credited to a customer
     credit_customer_name = None
@@ -475,11 +536,11 @@ async def create_purchase(purchase_data: PurchaseCreate, current_user: dict = De
         # Create credit transaction
         transaction = CreditTransaction(
             customer_id=purchase_data.credit_customer_id,
-            amount=total,  # Positive = credit
+            amount=total_sum,  # Positive = credit
             type="purchase_credit",
-            description=f"Ankauf #{purchase.id[:8].upper()} - {len(items)} Artikel",
-            reference_id=purchase.id,
-            staff_username=purchase_data.staff_username or "system"
+            description=f"Ankauf #{new_purchase.id[:8].upper()} - {len(new_items)} Artikel",
+            reference_id=new_purchase.id,
+            staff_username=current_user["username"] # Audit Trail: Force username from token
         )
         
         transaction_doc = transaction.model_dump()
@@ -487,30 +548,28 @@ async def create_purchase(purchase_data: PurchaseCreate, current_user: dict = De
         await db.credit_transactions.insert_one(transaction_doc)
         
         # Update customer balance
-        new_balance = customer.get("current_balance", 0) + total
+        new_balance = customer.get("current_balance", 0) + total_sum
         await db.customers.update_one(
             {"id": purchase_data.credit_customer_id},
             {"$set": {"current_balance": new_balance}}
         )
         
-        logger.info(f"Credited {total} CHF to customer {credit_customer_name} for purchase {purchase.id}")
+        logger.info(f"Credited {total_sum} CHF to customer {credit_customer_name} for purchase {new_purchase.id}")
     
-    doc = {
-        "id": purchase.id,
-        "items": [item.model_dump() for item in items],
-        "total": total,
-        "timestamp": purchase.timestamp.isoformat(),
-        "credit_customer_id": purchase_data.credit_customer_id,
-        "credit_customer_name": credit_customer_name
-    }
+    purchase_dict = new_purchase.model_dump()
+    # Explicitly overwrite staff_username to ensure integrity
+    purchase_dict["staff_username"] = current_user["username"]
+    purchase_dict["credit_customer_id"] = purchase_data.credit_customer_id
+    purchase_dict["credit_customer_name"] = credit_customer_name
     
-    await db.purchases.insert_one(doc)
+    await db.purchases.insert_one(purchase_dict)
     
     return PurchaseResponse(
-        id=purchase.id,
-        items=items,
-        total=total,
-        timestamp=purchase.timestamp.isoformat(),
+        id=new_purchase.id,
+        items=new_items,
+        total=total_sum,
+        timestamp=new_purchase.timestamp.isoformat(),
+        staff_username=new_purchase.staff_username,
         credit_customer_id=purchase_data.credit_customer_id,
         credit_customer_name=credit_customer_name
     )
@@ -602,6 +661,17 @@ async def export_purchases_excel(start_date: Optional[str] = None, end_date: Opt
                  "Preis (CHF)": "", "Ankauf Total (CHF)": ""}]
     
     df = pd.DataFrame(rows)
+    
+    # Security: Sanitize for Excel Injection
+    def sanitize_excel_cell(value):
+        if isinstance(value, str) and value.startswith(('=', '+', '-', '@')):
+            return "'" + value
+        return value
+
+    # Apply to all string columns
+    for col in df.select_dtypes(include=['object']).columns:
+        df[col] = df[col].apply(sanitize_excel_cell)
+
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         df.to_excel(writer, index=False, sheet_name='Ankäufe')
@@ -708,8 +778,7 @@ class UserResponse(BaseModel):
 @api_router.post("/auth/login")
 async def login(data: LoginRequest, request: Request):
     # Rate limiting
-    client_ip = request.client.host if request.client else "unknown"
-    check_rate_limit(client_ip)
+    check_rate_limit(request) # Pass request object now
     
     user = USERS.get(data.username.lower())
     if not user or not pwd_context.verify(data.password, user["password_hash"]):
@@ -763,7 +832,7 @@ async def update_category_image(name: str, data: CategoryImageUpdate, current_us
     return {"message": "Bild aktualisiert"}
 
 @api_router.delete("/custom-categories/{name}")
-async def delete_custom_category(name: str, current_user: dict = Depends(get_current_user)):
+async def delete_custom_category(name: str, current_user: dict = Depends(require_admin)): # RBAC: Admin only
     result = await db.custom_categories.delete_one({"name": name})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Kategorie nicht gefunden")
@@ -790,7 +859,7 @@ async def get_settings(current_user: dict = Depends(get_current_user)):
     return settings
 
 @api_router.put("/settings")
-async def update_settings(data: SettingsUpdate, current_user: dict = Depends(get_current_user)):
+async def update_settings(data: SettingsUpdate, current_user: dict = Depends(require_admin)): # RBAC: Admin only
     update_data = data.model_dump(exclude_none=True)
     update_data["type"] = "general"
     await db.app_settings.update_one(
