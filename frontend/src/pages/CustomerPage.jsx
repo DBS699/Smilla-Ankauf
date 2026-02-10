@@ -53,8 +53,8 @@ export default function CustomerPage() {
     };
 
     const handleAddCustomer = async () => {
-        if (!newCustomer.first_name.trim() || !newCustomer.last_name.trim() || !newCustomer.email.trim()) {
-            toast.error('Vorname, Nachname und E-Mail sind erforderlich');
+        if (!newCustomer.first_name.trim() || !newCustomer.last_name.trim()) {
+            toast.error('Vorname und Nachname sind erforderlich');
             return;
         }
 
@@ -242,7 +242,7 @@ export default function CustomerPage() {
                             </div>
                         </div>
                         <div className="space-y-2">
-                            <Label>E-Mail *</Label>
+                            <Label>E-Mail (optional)</Label>
                             <Input
                                 type="email"
                                 value={newCustomer.email}

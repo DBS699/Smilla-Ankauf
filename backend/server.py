@@ -110,6 +110,7 @@ class PurchaseResponse(BaseModel):
     items: List[PurchaseItem]
     total: float
     timestamp: str
+    staff_username: Optional[str] = None
     credit_customer_id: Optional[str] = None
     credit_customer_name: Optional[str] = None
 
@@ -128,7 +129,7 @@ class MonthlyStats(BaseModel):
 class CustomerCreate(BaseModel):
     first_name: str
     last_name: str
-    email: str
+    email: Optional[str] = None
     address: Optional[str] = None
     phone: Optional[str] = None
 
@@ -136,7 +137,7 @@ class Customer(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     first_name: str
     last_name: str
-    email: str
+    email: Optional[str] = None
     address: Optional[str] = None
     phone: Optional[str] = None
     current_balance: float = 0.0
@@ -596,6 +597,10 @@ async def get_purchases(
             query["timestamp"]["$lte"] = end_date
     
     purchases = await db.purchases.find(query, {"_id": 0}).sort("timestamp", -1).to_list(1000)
+    # Ensure timestamps are strings for PurchaseResponse
+    for p in purchases:
+        if p.get("timestamp") and not isinstance(p["timestamp"], str):
+            p["timestamp"] = p["timestamp"].isoformat()
     return purchases
 
 @api_router.get("/purchases/{purchase_id}", response_model=PurchaseResponse)
@@ -603,6 +608,9 @@ async def get_purchase(purchase_id: str, current_user: dict = Depends(get_curren
     purchase = await db.purchases.find_one({"id": purchase_id, "deleted": {"$ne": True}}, {"_id": 0})
     if not purchase:
         raise HTTPException(status_code=404, detail="Purchase not found")
+    # Ensure timestamp is a string for PurchaseResponse
+    if purchase.get("timestamp") and not isinstance(purchase["timestamp"], str):
+        purchase["timestamp"] = purchase["timestamp"].isoformat()
     return purchase
 
 @api_router.delete("/purchases/{purchase_id}")

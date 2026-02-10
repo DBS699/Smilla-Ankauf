@@ -38,7 +38,7 @@ export default function CustomerDetailPage() {
             setEditData({
                 first_name: data.first_name,
                 last_name: data.last_name,
-                email: data.email,
+                email: data.email || '',
                 address: data.address || '',
                 phone: data.phone || ''
             });
@@ -80,8 +80,8 @@ export default function CustomerDetailPage() {
     };
 
     const handleUpdateCustomer = async () => {
-        if (!editData.first_name.trim() || !editData.last_name.trim() || !editData.email.trim()) {
-            toast.error('Vorname, Nachname und E-Mail sind erforderlich');
+        if (!editData.first_name.trim() || !editData.last_name.trim()) {
+            toast.error('Vorname und Nachname sind erforderlich');
             return;
         }
 
@@ -210,10 +210,12 @@ export default function CustomerDetailPage() {
                         <CardTitle className="text-lg">Kundendaten</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-3">
-                        <div className="flex items-center gap-3 text-sm">
-                            <Mail className="w-4 h-4 text-muted-foreground" />
-                            <span>{customer.email}</span>
-                        </div>
+                        {customer.email && (
+                            <div className="flex items-center gap-3 text-sm">
+                                <Mail className="w-4 h-4 text-muted-foreground" />
+                                <span>{customer.email}</span>
+                            </div>
+                        )}
                         {customer.address && (
                             <div className="flex items-center gap-3 text-sm">
                                 <MapPin className="w-4 h-4 text-muted-foreground" />
@@ -364,7 +366,7 @@ export default function CustomerDetailPage() {
                             </div>
                         </div>
                         <div className="space-y-2">
-                            <Label>E-Mail *</Label>
+                            <Label>E-Mail (optional)</Label>
                             <Input
                                 type="email"
                                 value={editData.email}
