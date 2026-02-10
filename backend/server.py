@@ -76,7 +76,8 @@ class PriceMatrixEntry(BaseModel):
     fixed_price: Optional[float] = None
 
 class Purchase(BaseModel):
-    model_config = ConfigDict(extra="ignore")
+    class Config:
+        extra = "ignore"
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     items: List[PurchaseItem]
     total: float
