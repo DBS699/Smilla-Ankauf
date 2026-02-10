@@ -54,13 +54,14 @@ export default function DigitizePage() {
         }
         setIsSavingKey(true);
         try {
-            const settings = await api.getSettings();
-            await api.updateSettings({ ...settings, gemini_api_key: apiKey });
+            await api.updateSettings({ gemini_api_key: apiKey });
             setApiKeySet(true);
             setApiKey('••••••••••' + apiKey.slice(-4));
             toast.success("Gemini API Key gespeichert!");
         } catch (error) {
-            toast.error("Fehler beim Speichern: " + (error.response?.data?.detail || error.message));
+            const detail = error.response?.data?.detail;
+            const msg = typeof detail === 'string' ? detail : (error.message || 'Unbekannter Fehler');
+            toast.error("Fehler beim Speichern: " + msg);
         } finally {
             setIsSavingKey(false);
         }
@@ -266,10 +267,10 @@ export default function DigitizePage() {
                         <CardContent className="pt-6">
                             <div
                                 className={`border-2 border-dashed rounded-xl flex flex-col items-center justify-center p-8 transition-all duration-200 ${isDragging
-                                        ? 'border-primary bg-primary/10 scale-[1.02]'
-                                        : image
-                                            ? 'border-primary/20 bg-primary/5'
-                                            : 'border-muted-foreground/20 hover:border-primary/50 hover:bg-muted/50'
+                                    ? 'border-primary bg-primary/10 scale-[1.02]'
+                                    : image
+                                        ? 'border-primary/20 bg-primary/5'
+                                        : 'border-muted-foreground/20 hover:border-primary/50 hover:bg-muted/50'
                                     }`}
                                 onDragOver={handleDragOver}
                                 onDragLeave={handleDragLeave}
