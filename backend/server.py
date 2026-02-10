@@ -18,6 +18,8 @@ from datetime import datetime, timezone, timedelta
 from collections import defaultdict
 import io
 import pandas as pd
+import json
+import google.generativeai as genai
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -1163,6 +1165,80 @@ async def export_customers_excel(current_user: dict = Depends(require_admin)): #
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": "attachment; filename=kunden_guthaben_export.xlsx"}
     )
+
+# ============== Digitization Routes (Gemini AI) ==============
+
+@api_router.post("/digitize/analyze")
+async def analyze_image(file: UploadFile = File(...), current_user: dict = Depends(require_admin)):
+    """
+    Analyze an uploaded image using Gemini 2.0 Flash to extract customer data.
+    Returns: JSON with extracted fields.
+    """
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        logger.error("GEMINI_API_KEY not found in environment variables")
+        raise HTTPException(status_code=500, detail="Server configuration error: Gemini API Key missing")
+
+    try:
+        genai.configure(api_key=api_key)
+        
+        # Priority: Try Gemini 2.0 Flash, fall back to 1.5 Pro if not available
+        model_name = "gemini-2.0-flash"
+        try:
+             model = genai.GenerativeModel(model_name)
+        except Exception:
+             model_name = "gemini-1.5-pro"
+             model = genai.GenerativeModel(model_name)
+        
+        logger.info(f"Analyzing image with model: {model_name}")
+
+        content = await file.read()
+        
+        # Prepare the prompt
+        prompt = """
+        You are an expert OCR system for handwritten and printed receipts/records.
+        Analyze this image and extract the following information into a strictly valid JSON object.
+        
+        Fields to extract:
+        - "first_name": string or null (Customer first name)
+        - "last_name": string or null (Customer last name)
+        - "date": string (YYYY-MM-DD format) or null. If only day/month is found, assume current year.
+        - "amount": number (The credit balance/gutschrift amount. Positive number.)
+        - "phone": string or null (Phone number if visible)
+        - "notes": string (Any other relevant text/context)
+
+        Rules:
+        - If a field is not found, return null.
+        - Return ONLY the raw JSON string. Do not include markdown formatting like ```json ... ```.
+        """
+        
+        # Create image part for Gemini
+        image_part = {
+            "mime_type": file.content_type,
+            "data": content
+        }
+        
+        response = await model.generate_content_async([prompt, image_part])
+        text = response.text.strip()
+        
+        # Clean up potential markdown code blocks
+        if text.startswith("```json"):
+            text = text[7:]
+        if text.startswith("```"):
+            text = text[3:]
+        if text.endswith("```"):
+            text = text[:-3]
+            
+        try:
+            data = json.loads(text.strip())
+            return data
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse Gemini JSON: {text}")
+            raise HTTPException(status_code=500, detail="AI returned invalid data format")
+            
+    except Exception as e:
+        logger.error(f"Gemini Analysis Failed: {e}")
+        raise HTTPException(status_code=500, detail=f"AI Analysis failed: {str(e)}")
 
 # ============== App Setup ==============
 

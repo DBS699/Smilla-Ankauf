@@ -10,6 +10,7 @@ import SettingsPage from "@/pages/SettingsPage";
 import LoginPage from "@/pages/LoginPage";
 import CustomerPage from "@/pages/CustomerPage";
 import CustomerDetailPage from "@/pages/CustomerDetailPage";
+import DigitizePage from "@/pages/DigitizePage";
 import api from "@/lib/api";
 
 // Background Context
@@ -75,6 +76,7 @@ function AppRoutes() {
       <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
       <Route path="/customers" element={<ProtectedRoute><CustomerPage /></ProtectedRoute>} />
       <Route path="/customers/:id" element={<ProtectedRoute><CustomerDetailPage /></ProtectedRoute>} />
+      <Route path="/digitize" element={<ProtectedRoute><DigitizePage /></ProtectedRoute>} />
     </Routes>
   );
 }

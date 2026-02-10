@@ -665,6 +665,13 @@ export default function MainPage() {
               </Button>
             </Link>
 
+            <Link to="/digitize">
+              <Button variant="outline" size="sm" className="px-2 sm:px-3 text-primary border-primary hover:bg-primary/5">
+                <Camera className="w-4 h-4 sm:mr-2" />
+                <span className="hidden sm:inline">Scan</span>
+              </Button>
+            </Link>
+
             <Link to="/customers">
               <Button variant="outline" size="sm" data-testid="customers-link" className="px-2 sm:px-3">
                 <Users className="w-4 h-4 sm:mr-2" />

@@ -273,12 +273,25 @@ export const api = {
     window.URL.revokeObjectURL(url);
   },
 
-  // Create purchase with credit option
   createPurchaseWithCredit: async (items, creditCustomerId = null, staffUsername = null) => {
     const response = await apiClient.post('/purchases', {
       items,
       credit_customer_id: creditCustomerId,
       staff_username: staffUsername
+    });
+    return response.data;
+  },
+
+  // ============== Digitization APIs (Gemini) ==============
+
+  analyzeImage: async (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    // Increase timeout for AI processing
+    const response = await apiClient.post('/digitize/analyze', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 30000 // 30 seconds
     });
     return response.data;
   }
