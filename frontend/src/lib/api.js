@@ -27,7 +27,7 @@ apiClient.interceptors.response.use(
     if (error.response?.status === 401 && !error.config.url?.includes('/auth/login')) {
       localStorage.removeItem('rewear_user');
       localStorage.removeItem('rewear_token');
-      window.location.reload();
+      window.location.href = '/login';
     }
     return Promise.reject(error);
   }
