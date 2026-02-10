@@ -1174,10 +1174,11 @@ async def analyze_image(file: UploadFile = File(...), current_user: dict = Depen
     Analyze an uploaded image using Gemini 3 Flash (Preview) to extract customer data.
     Returns: JSON with extracted fields.
     """
-    api_key = os.environ.get("GEMINI_API_KEY")
+    # Try DB settings first, then env var
+    settings = await db.app_settings.find_one({"type": "general"})
+    api_key = (settings or {}).get("gemini_api_key") or os.environ.get("GEMINI_API_KEY")
     if not api_key:
-        logger.error("GEMINI_API_KEY not found in environment variables")
-        raise HTTPException(status_code=500, detail="Server configuration error: Gemini API Key missing")
+        raise HTTPException(status_code=400, detail="Gemini API Key nicht konfiguriert. Bitte auf der Scan-Seite eingeben.")
 
     try:
         genai.configure(api_key=api_key)

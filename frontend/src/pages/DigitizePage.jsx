@@ -1,6 +1,6 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Camera, Image as ImageIcon, Upload, X, Loader2, Save, RotateCcw } from 'lucide-react';
+import { Camera, Image as ImageIcon, Upload, X, Loader2, Save, RotateCcw, KeyRound, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,6 +17,9 @@ export default function DigitizePage() {
     const [isSaving, setIsSaving] = useState(false);
     const [extractedData, setExtractedData] = useState(null);
     const [isDragging, setIsDragging] = useState(false);
+    const [apiKey, setApiKey] = useState('');
+    const [apiKeySet, setApiKeySet] = useState(false);
+    const [isSavingKey, setIsSavingKey] = useState(false);
     const fileInputRef = useRef(null);
     const [formData, setFormData] = useState({
         first_name: '',
@@ -26,6 +29,42 @@ export default function DigitizePage() {
         phone: '',
         notes: ''
     });
+
+    // Load existing API key status on mount
+    useEffect(() => {
+        const loadSettings = async () => {
+            try {
+                const settings = await api.getSettings();
+                if (settings?.gemini_api_key) {
+                    setApiKeySet(true);
+                    // Show masked key
+                    setApiKey('••••••••••' + settings.gemini_api_key.slice(-4));
+                }
+            } catch (e) {
+                // Ignore
+            }
+        };
+        loadSettings();
+    }, []);
+
+    const handleSaveApiKey = async () => {
+        if (!apiKey || apiKey.startsWith('••••')) {
+            toast.error("Bitte einen gültigen API Key eingeben");
+            return;
+        }
+        setIsSavingKey(true);
+        try {
+            const settings = await api.getSettings();
+            await api.updateSettings({ ...settings, gemini_api_key: apiKey });
+            setApiKeySet(true);
+            setApiKey('••••••••••' + apiKey.slice(-4));
+            toast.success("Gemini API Key gespeichert!");
+        } catch (error) {
+            toast.error("Fehler beim Speichern: " + (error.response?.data?.detail || error.message));
+        } finally {
+            setIsSavingKey(false);
+        }
+    };
 
     const handleFileSelect = (e) => {
         const selectedFile = e.target.files[0];
@@ -168,6 +207,57 @@ export default function DigitizePage() {
                     Zurück
                 </Button>
             </div>
+
+            {/* API Key Configuration */}
+            {!apiKeySet && (
+                <Card className="mb-6 border-amber-200 bg-amber-50">
+                    <CardContent className="pt-6">
+                        <div className="flex items-start gap-3">
+                            <KeyRound className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
+                            <div className="flex-1">
+                                <h3 className="font-semibold text-amber-800 mb-1">Gemini API Key benötigt</h3>
+                                <p className="text-sm text-amber-700 mb-3">
+                                    Hol dir einen Key von{' '}
+                                    <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="underline font-medium">
+                                        Google AI Studio
+                                    </a>
+                                    {' '}und füge ihn hier ein.
+                                </p>
+                                <div className="flex gap-2">
+                                    <Input
+                                        type="password"
+                                        placeholder="AIzaSy..."
+                                        value={apiKey}
+                                        onChange={(e) => setApiKey(e.target.value)}
+                                        className="max-w-sm bg-white"
+                                    />
+                                    <Button onClick={handleSaveApiKey} disabled={isSavingKey}>
+                                        {isSavingKey ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Speichern'}
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
+
+            {apiKeySet && (
+                <div className="mb-6 flex items-center gap-2 text-sm text-green-700 bg-green-50 px-4 py-2 rounded-lg">
+                    <CheckCircle className="w-4 h-4" />
+                    <span>Gemini API Key konfiguriert</span>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="ml-auto text-xs h-7"
+                        onClick={() => {
+                            setApiKeySet(false);
+                            setApiKey('');
+                        }}
+                    >
+                        Ändern
+                    </Button>
+                </div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {/* Left Column: Image Upload & Preview */}
