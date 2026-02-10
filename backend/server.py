@@ -205,6 +205,79 @@ class ReceiptSettingsUpdate(BaseModel):
     font_size_footer: Optional[int] = None
 
 
+# ============== Auth & Security (Moved to top for dependency injection) ==============
+
+# JWT Configuration
+JWT_SECRET = os.environ.get("JWT_SECRET", "dev-secret-change-in-production-" + str(uuid.uuid4()))
+JWT_ALGORITHM = "HS256"
+JWT_EXPIRATION_HOURS = 12
+
+# Password hashing
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+# Bearer token security scheme
+security = HTTPBearer(auto_error=False)
+
+# Rate limiting for login
+login_attempts = defaultdict(list)  # IP -> list of timestamps
+MAX_LOGIN_ATTEMPTS = 5
+LOGIN_WINDOW_SECONDS = 60
+
+# Hash passwords at startup (only once)
+def _hash_pw(plain: str) -> str:
+    return pwd_context.hash(plain)
+
+USERS = {
+    "admin": {
+        "password_hash": _hash_pw(os.environ.get("ADMIN_PASSWORD", "1234")),
+        "role": "admin"
+    },
+    "smilla": {
+        "password_hash": _hash_pw(os.environ.get("SMILLA_PASSWORD", "1234")),
+        "role": "mitarbeiter"
+    }
+}
+
+def create_access_token(username: str, role: str) -> str:
+    payload = {
+        "sub": username,
+        "role": role,
+        "exp": datetime.now(timezone.utc) + timedelta(hours=JWT_EXPIRATION_HOURS),
+        "iat": datetime.now(timezone.utc),
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+async def get_current_user(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+) -> dict:
+    """Validate JWT token and return current user. Raises 401 if invalid."""
+    if credentials is None:
+        raise HTTPException(status_code=401, detail="Token erforderlich")
+    try:
+        payload = jwt.decode(credentials.credentials, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        username = payload.get("sub")
+        role = payload.get("role")
+        if username is None:
+            raise HTTPException(status_code=401, detail="Ungültiger Token")
+        return {"username": username, "role": role}
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Token abgelaufen oder ungültig")
+
+def check_rate_limit(client_ip: str):
+    """Enforce rate limiting on login attempts."""
+    now = time.time()
+    # Clean old entries
+    login_attempts[client_ip] = [
+        t for t in login_attempts[client_ip] if now - t < LOGIN_WINDOW_SECONDS
+    ]
+    if len(login_attempts[client_ip]) >= MAX_LOGIN_ATTEMPTS:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Zu viele Anmeldeversuche. Bitte warten Sie {LOGIN_WINDOW_SECONDS} Sekunden."
+        )
+    login_attempts[client_ip].append(now)
+
+
 # ============== Basic Routes ==============
 
 @api_router.get("/")
@@ -609,77 +682,6 @@ async def get_today_stats(current_user: dict = Depends(get_current_user)):
         "total_items": total_items
     }
 
-# ============== Auth & Security ==============
-
-# JWT Configuration
-JWT_SECRET = os.environ.get("JWT_SECRET", "dev-secret-change-in-production-" + str(uuid.uuid4()))
-JWT_ALGORITHM = "HS256"
-JWT_EXPIRATION_HOURS = 12
-
-# Password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-# Bearer token security scheme
-security = HTTPBearer(auto_error=False)
-
-# Rate limiting for login
-login_attempts = defaultdict(list)  # IP -> list of timestamps
-MAX_LOGIN_ATTEMPTS = 5
-LOGIN_WINDOW_SECONDS = 60
-
-# Hash passwords at startup (only once)
-def _hash_pw(plain: str) -> str:
-    return pwd_context.hash(plain)
-
-USERS = {
-    "admin": {
-        "password_hash": _hash_pw(os.environ.get("ADMIN_PASSWORD", "1234")),
-        "role": "admin"
-    },
-    "smilla": {
-        "password_hash": _hash_pw(os.environ.get("SMILLA_PASSWORD", "1234")),
-        "role": "mitarbeiter"
-    }
-}
-
-def create_access_token(username: str, role: str) -> str:
-    payload = {
-        "sub": username,
-        "role": role,
-        "exp": datetime.now(timezone.utc) + timedelta(hours=JWT_EXPIRATION_HOURS),
-        "iat": datetime.now(timezone.utc),
-    }
-    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
-
-async def get_current_user(
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
-) -> dict:
-    """Validate JWT token and return current user. Raises 401 if invalid."""
-    if credentials is None:
-        raise HTTPException(status_code=401, detail="Token erforderlich")
-    try:
-        payload = jwt.decode(credentials.credentials, JWT_SECRET, algorithms=[JWT_ALGORITHM])
-        username = payload.get("sub")
-        role = payload.get("role")
-        if username is None:
-            raise HTTPException(status_code=401, detail="Ungültiger Token")
-        return {"username": username, "role": role}
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Token abgelaufen oder ungültig")
-
-def check_rate_limit(client_ip: str):
-    """Enforce rate limiting on login attempts."""
-    now = time.time()
-    # Clean old entries
-    login_attempts[client_ip] = [
-        t for t in login_attempts[client_ip] if now - t < LOGIN_WINDOW_SECONDS
-    ]
-    if len(login_attempts[client_ip]) >= MAX_LOGIN_ATTEMPTS:
-        raise HTTPException(
-            status_code=429,
-            detail=f"Zu viele Anmeldeversuche. Bitte warten Sie {LOGIN_WINDOW_SECONDS} Sekunden."
-        )
-    login_attempts[client_ip].append(now)
 
 class LoginRequest(BaseModel):
     username: str
