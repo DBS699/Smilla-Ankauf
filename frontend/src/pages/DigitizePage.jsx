@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Camera, Image as ImageIcon, Upload, Check, X, Loader2, Save, RotateCcw } from 'lucide-react';
+import { Camera, Image as ImageIcon, Upload, X, Loader2, Save, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,6 +16,7 @@ export default function DigitizePage() {
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [extractedData, setExtractedData] = useState(null);
+    const [isDragging, setIsDragging] = useState(false);
     const fileInputRef = useRef(null);
     const [formData, setFormData] = useState({
         first_name: '',
@@ -31,7 +32,30 @@ export default function DigitizePage() {
         if (selectedFile) {
             setFile(selectedFile);
             setImage(URL.createObjectURL(selectedFile));
-            setExtractedData(null); // Reset previous analysis
+            setExtractedData(null);
+        }
+    };
+
+    const handleDragOver = (e) => {
+        e.preventDefault();
+        setIsDragging(true);
+    };
+
+    const handleDragLeave = (e) => {
+        e.preventDefault();
+        setIsDragging(false);
+    };
+
+    const handleDrop = (e) => {
+        e.preventDefault();
+        setIsDragging(false);
+        const droppedFile = e.dataTransfer.files[0];
+        if (droppedFile && droppedFile.type.startsWith('image/')) {
+            setFile(droppedFile);
+            setImage(URL.createObjectURL(droppedFile));
+            setExtractedData(null);
+        } else if (droppedFile) {
+            toast.error("Bitte nur Bilddateien hochladen");
         }
     };
 
@@ -46,7 +70,6 @@ export default function DigitizePage() {
             const data = await api.analyzeImage(file);
             setExtractedData(data);
 
-            // Populate form with extracted data
             setFormData({
                 first_name: data.first_name || '',
                 last_name: data.last_name || '',
@@ -66,7 +89,6 @@ export default function DigitizePage() {
     };
 
     const handleSave = async () => {
-        // Validation
         if (!formData.first_name || !formData.last_name || !formData.amount) {
             toast.error("Name und Betrag sind erforderlich.");
             return;
@@ -74,21 +96,17 @@ export default function DigitizePage() {
 
         setIsSaving(true);
         try {
-            // 1. Create/Find Customer
             const customerData = {
                 first_name: formData.first_name,
                 last_name: formData.last_name,
-                email: `${formData.first_name.toLowerCase()}.${formData.last_name.toLowerCase()}@placeholder.com`, // Placeholder if not found
+                email: `${formData.first_name.toLowerCase()}.${formData.last_name.toLowerCase()}@placeholder.com`,
                 phone: formData.phone || undefined,
                 address: "Digitalisiert"
             };
 
-            // Check if customer exists by name to avoid duplicates (simplified check)
-            // In a real scenario, we might want a search/select UI first
             let customerId;
             const searchResults = await api.getCustomers(`${formData.first_name} ${formData.last_name}`);
 
-            // Filter for exact match
             const exactMatch = searchResults.find(c =>
                 c.first_name.toLowerCase() === formData.first_name.toLowerCase() &&
                 c.last_name.toLowerCase() === formData.last_name.toLowerCase()
@@ -98,16 +116,14 @@ export default function DigitizePage() {
                 customerId = exactMatch.id;
                 toast.info(`Kunde gefunden: ${exactMatch.first_name} ${exactMatch.last_name}`);
             } else {
-                // Create new customer
                 const newCustomer = await api.createCustomer(customerData);
                 customerId = newCustomer.id;
                 toast.success("Neuer Kunde erstellt.");
             }
 
-            // 2. Create Transaction (Credit)
             const transactionData = {
                 amount: parseFloat(formData.amount),
-                type: "credit", // Manual credit from digitization
+                type: "credit",
                 description: `Digitalisiert: ${formData.notes || 'Beleg eingescannt'}`,
                 reference_id: `DIGIT-${Date.now()}`
             };
@@ -116,7 +132,6 @@ export default function DigitizePage() {
 
             toast.success("Gutschrift erfolgreich gespeichert!");
 
-            // Reset
             setImage(null);
             setFile(null);
             setExtractedData(null);
@@ -134,32 +149,6 @@ export default function DigitizePage() {
             toast.error("Fehler beim Speichern: " + (error.response?.data?.detail || error.message));
         } finally {
             setIsSaving(false);
-        }
-    };
-
-    const [isDragging, setIsDragging] = useState(false);
-
-    const handleDragOver = (e) => {
-        e.preventDefault();
-        setIsDragging(true);
-    };
-
-    const handleDragLeave = (e) => {
-        e.preventDefault();
-        setIsDragging(false);
-    };
-
-    const handleDrop = (e) => {
-        e.preventDefault();
-        setIsDragging(false);
-
-        const droppedFile = e.dataTransfer.files[0];
-        if (droppedFile && droppedFile.type.startsWith('image/')) {
-            setFile(droppedFile);
-            setImage(URL.createObjectURL(droppedFile));
-            setExtractedData(null);
-        } else if (droppedFile) {
-            toast.error("Bitte nur Bilddateien hochladen");
         }
     };
 
@@ -186,7 +175,7 @@ export default function DigitizePage() {
                     <Card>
                         <CardContent className="pt-6">
                             <div
-                                className={`border-2 border-dashed rounded-xl flex flex-col items-center justify-center p-8 transition-colors transition-all duration-200 ${isDragging
+                                className={`border-2 border-dashed rounded-xl flex flex-col items-center justify-center p-8 transition-all duration-200 ${isDragging
                                         ? 'border-primary bg-primary/10 scale-[1.02]'
                                         : image
                                             ? 'border-primary/20 bg-primary/5'
@@ -227,118 +216,149 @@ export default function DigitizePage() {
                                         <p className="text-sm text-muted-foreground mb-4">
                                             Klicken oder Datei hierher ziehen
                                         </p>
-                                    </>
+                                        <Button variant="secondary" size="sm" className="pointer-events-auto">
+                                            <ImageIcon className="w-4 h-4 mr-2" />
+                                            Datei auswählen
+                                        </Button>
+                                    </div>
                                 )}
-                            </Button>
-                            <p className="text-xs text-center text-muted-foreground mt-2">
-                                Powered by Google Gemini 3 Flash
-                            </p>
-                        </div>
+                                <input
+                                    type="file"
+                                    ref={fileInputRef}
+                                    className="hidden"
+                                    accept="image/*"
+                                    onChange={handleFileSelect}
+                                />
+                            </div>
+
+                            {image && !extractedData && (
+                                <div className="mt-4">
+                                    <Button
+                                        className="w-full h-12 text-lg"
+                                        onClick={handleAnalyze}
+                                        disabled={isAnalyzing}
+                                    >
+                                        {isAnalyzing ? (
+                                            <>
+                                                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                                                KI analysiert Bild...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <RotateCcw className="w-5 h-5 mr-2" />
+                                                Jetzt Analysieren
+                                            </>
+                                        )}
+                                    </Button>
+                                    <p className="text-xs text-center text-muted-foreground mt-2">
+                                        Powered by Google Gemini 3 Flash
+                                    </p>
+                                </div>
                             )}
-                    </CardContent>
-                </Card>
-            </div>
+                        </CardContent>
+                    </Card>
+                </div>
 
-            {/* Right Column: Results & Form */}
-            <div className="space-y-6">
-                <Card className={!extractedData ? 'opacity-50 pointer-events-none' : ''}>
-                    <CardHeader>
-                        <CardTitle>Erfasste Daten</CardTitle>
-                        <CardDescription>
-                            Bitte überprüfe und korrigiere die Daten vor dem Speichern.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
+                {/* Right Column: Results & Form */}
+                <div className="space-y-6">
+                    <Card className={!extractedData ? 'opacity-50 pointer-events-none' : ''}>
+                        <CardHeader>
+                            <CardTitle>Erfasste Daten</CardTitle>
+                            <CardDescription>
+                                Bitte überprüfe und korrigiere die Daten vor dem Speichern.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="first_name">Vorname</Label>
+                                    <Input
+                                        id="first_name"
+                                        value={formData.first_name}
+                                        onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
+                                        placeholder="Maria"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="last_name">Nachname</Label>
+                                    <Input
+                                        id="last_name"
+                                        value={formData.last_name}
+                                        onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
+                                        placeholder="Muster"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="amount">Guthaben (CHF)</Label>
+                                    <Input
+                                        id="amount"
+                                        type="number"
+                                        step="0.05"
+                                        className="font-mono font-bold text-lg"
+                                        value={formData.amount}
+                                        onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                                        placeholder="0.00"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="date">Datum</Label>
+                                    <Input
+                                        id="date"
+                                        type="date"
+                                        value={formData.date}
+                                        onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+
                             <div className="space-y-2">
-                                <Label htmlFor="first_name">Vorname</Label>
+                                <Label htmlFor="phone">Telefon (optional)</Label>
                                 <Input
-                                    id="first_name"
-                                    value={formData.first_name}
-                                    onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
-                                    placeholder="Maria"
+                                    id="phone"
+                                    value={formData.phone}
+                                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                                    placeholder="+41 79 123 45 67"
                                 />
                             </div>
+
                             <div className="space-y-2">
-                                <Label htmlFor="last_name">Nachname</Label>
-                                <Input
-                                    id="last_name"
-                                    value={formData.last_name}
-                                    onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
-                                    placeholder="Muster"
+                                <Label htmlFor="notes">Notizen / Kontext</Label>
+                                <Textarea
+                                    id="notes"
+                                    value={formData.notes}
+                                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                                    placeholder="Zusätzliche Infos vom Beleg..."
+                                    className="min-h-[80px]"
                                 />
                             </div>
-                        </div>
 
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="amount">Guthaben (CHF)</Label>
-                                <Input
-                                    id="amount"
-                                    type="number"
-                                    step="0.05"
-                                    className="font-mono font-bold text-lg"
-                                    value={formData.amount}
-                                    onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                                    placeholder="0.00"
-                                />
+                            <div className="pt-4 flex gap-3">
+                                <Button
+                                    className="flex-1 bg-green-600 hover:bg-green-700"
+                                    size="lg"
+                                    onClick={handleSave}
+                                    disabled={isSaving}
+                                >
+                                    {isSaving ? (
+                                        <>
+                                            <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                                            Speichere...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Save className="w-5 h-5 mr-2" />
+                                            Kunde &amp; Guthaben Speichern
+                                        </>
+                                    )}
+                                </Button>
                             </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="date">Datum</Label>
-                                <Input
-                                    id="date"
-                                    type="date"
-                                    value={formData.date}
-                                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                                />
-                            </div>
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label htmlFor="phone">Telefon (optional)</Label>
-                            <Input
-                                id="phone"
-                                value={formData.phone}
-                                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                                placeholder="+41 79 123 45 67"
-                            />
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label htmlFor="notes">Notizen / Kontext</Label>
-                            <Textarea
-                                id="notes"
-                                value={formData.notes}
-                                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                                placeholder="Zusätzliche Infos vom Beleg..."
-                                className="min-h-[80px]"
-                            />
-                        </div>
-
-                        <div className="pt-4 flex gap-3">
-                            <Button
-                                className="flex-1 bg-green-600 hover:bg-green-700"
-                                size="lg"
-                                onClick={handleSave}
-                                disabled={isSaving}
-                            >
-                                {isSaving ? (
-                                    <>
-                                        <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                                        Speichere...
-                                    </>
-                                ) : (
-                                    <>
-                                        <Save className="w-5 h-5 mr-2" />
-                                        Kunde & Guthaben Speichern
-                                    </>
-                                )}
-                            </Button>
-                        </div>
-                    </CardContent>
-                </Card>
+                        </CardContent>
+                    </Card>
+                </div>
             </div>
         </div>
-        </div >
     );
 }
