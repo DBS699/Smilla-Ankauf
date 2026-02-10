@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Camera, Image as ImageIcon, Upload, X, Loader2, Save, RotateCcw, KeyRound, CheckCircle } from 'lucide-react';
+import { Camera, Image as ImageIcon, Upload, X, Loader2, Save, RotateCcw, KeyRound, CheckCircle, Users, UserPlus, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import api from '@/lib/api';
@@ -30,38 +31,42 @@ export default function DigitizePage() {
         notes: ''
     });
 
-    // Load existing API key status on mount
+    // Duplicate detection state
+    const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
+    const [similarCustomers, setSimilarCustomers] = useState([]);
+    const [isSearchingDuplicates, setIsSearchingDuplicates] = useState(false);
+
     useEffect(() => {
-        const loadSettings = async () => {
-            try {
-                const settings = await api.getSettings();
-                if (settings?.gemini_api_key) {
-                    setApiKeySet(true);
-                    // Show masked key
-                    setApiKey('••••••••••' + settings.gemini_api_key.slice(-4));
-                }
-            } catch (e) {
-                // Ignore
-            }
-        };
         loadSettings();
     }, []);
 
+    const loadSettings = async () => {
+        try {
+            const settings = await api.getSettings();
+            if (settings?.gemini_api_key) {
+                setApiKeySet(true);
+            }
+        } catch (error) {
+            console.error('Failed to load settings:', error);
+        }
+    };
+
     const handleSaveApiKey = async () => {
-        if (!apiKey || apiKey.startsWith('••••')) {
-            toast.error("Bitte einen gültigen API Key eingeben");
+        if (!apiKey.trim()) {
+            toast.error('Bitte API Key eingeben');
             return;
         }
         setIsSavingKey(true);
         try {
             await api.updateSettings({ gemini_api_key: apiKey });
             setApiKeySet(true);
-            setApiKey('••••••••••' + apiKey.slice(-4));
-            toast.success("Gemini API Key gespeichert!");
+            toast.success('API Key gespeichert!');
         } catch (error) {
-            const detail = error.response?.data?.detail;
-            const msg = typeof detail === 'string' ? detail : (error.message || 'Unbekannter Fehler');
-            toast.error("Fehler beim Speichern: " + msg);
+            console.error('Failed to save API key:', error);
+            const errorMsg = typeof error.response?.data?.detail === 'object'
+                ? JSON.stringify(error.response?.data?.detail)
+                : error.response?.data?.detail || error.message;
+            toast.error('Fehler: ' + errorMsg);
         } finally {
             setIsSavingKey(false);
         }
@@ -71,8 +76,9 @@ export default function DigitizePage() {
         const selectedFile = e.target.files[0];
         if (selectedFile) {
             setFile(selectedFile);
-            setImage(URL.createObjectURL(selectedFile));
-            setExtractedData(null);
+            const reader = new FileReader();
+            reader.onload = (event) => setImage(event.target.result);
+            reader.readAsDataURL(selectedFile);
         }
     };
 
@@ -92,40 +98,96 @@ export default function DigitizePage() {
         const droppedFile = e.dataTransfer.files[0];
         if (droppedFile && droppedFile.type.startsWith('image/')) {
             setFile(droppedFile);
-            setImage(URL.createObjectURL(droppedFile));
-            setExtractedData(null);
-        } else if (droppedFile) {
-            toast.error("Bitte nur Bilddateien hochladen");
+            const reader = new FileReader();
+            reader.onload = (event) => setImage(event.target.result);
+            reader.readAsDataURL(droppedFile);
+        } else {
+            toast.error('Bitte eine Bilddatei hochladen.');
         }
     };
 
     const handleAnalyze = async () => {
-        if (!file) {
-            toast.error("Bitte zuerst ein Bild auswählen");
-            return;
-        }
-
+        if (!file) return;
         setIsAnalyzing(true);
         try {
-            const data = await api.analyzeImage(file);
-            setExtractedData(data);
-
+            const result = await api.analyzeImage(file);
+            setExtractedData(result);
             setFormData({
-                first_name: data.first_name || '',
-                last_name: data.last_name || '',
-                date: data.date || new Date().toISOString().split('T')[0],
-                amount: data.amount ? data.amount.toString() : '',
-                phone: data.phone || '',
-                notes: data.notes || ''
+                first_name: result.first_name || '',
+                last_name: result.last_name || '',
+                date: result.date || '',
+                amount: result.amount || '',
+                phone: result.phone || '',
+                notes: result.notes || ''
             });
-
-            toast.success("Analyse erfolgreich!");
+            toast.success('Analyse abgeschlossen!');
         } catch (error) {
-            console.error("Analysis failed:", error);
-            toast.error("Fehler bei der Analyse: " + (error.response?.data?.detail || error.message));
+            console.error('Analysis failed:', error);
+            toast.error('Analyse fehlgeschlagen: ' + (error.response?.data?.detail || error.message));
         } finally {
             setIsAnalyzing(false);
         }
+    };
+
+    // Fuzzy similarity check (Levenshtein-based)
+    const similarity = (a, b) => {
+        a = a.toLowerCase().trim();
+        b = b.toLowerCase().trim();
+        if (a === b) return 1.0;
+        if (!a || !b) return 0;
+
+        const matrix = Array.from({ length: a.length + 1 }, (_, i) =>
+            Array.from({ length: b.length + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0))
+        );
+        for (let i = 1; i <= a.length; i++) {
+            for (let j = 1; j <= b.length; j++) {
+                matrix[i][j] = a[i - 1] === b[j - 1]
+                    ? matrix[i - 1][j - 1]
+                    : 1 + Math.min(matrix[i - 1][j], matrix[i][j - 1], matrix[i - 1][j - 1]);
+            }
+        }
+        const maxLen = Math.max(a.length, b.length);
+        return 1 - matrix[a.length][b.length] / maxLen;
+    };
+
+    const findSimilarCustomers = async () => {
+        const { first_name, last_name } = formData;
+        if (!first_name || !last_name) return [];
+
+        // Search by first name and last name separately to cast a wide net
+        const [byFirst, byLast, byFull] = await Promise.all([
+            api.getCustomers(first_name),
+            api.getCustomers(last_name),
+            api.getCustomers(`${first_name} ${last_name}`)
+        ]);
+
+        // Merge results, deduplicate by ID
+        const seen = new Set();
+        const all = [...byFull, ...byFirst, ...byLast].filter(c => {
+            if (seen.has(c.id)) return false;
+            seen.add(c.id);
+            return true;
+        });
+
+        // Score each customer
+        const scored = all.map(c => {
+            const firstSim = similarity(first_name, c.first_name);
+            const lastSim = similarity(last_name, c.last_name);
+            // Also check swapped names (first↔last)
+            const swapFirstSim = similarity(first_name, c.last_name);
+            const swapLastSim = similarity(last_name, c.first_name);
+            const normalScore = (firstSim + lastSim) / 2;
+            const swapScore = (swapFirstSim + swapLastSim) / 2;
+            const score = Math.max(normalScore, swapScore);
+            const isExact = firstSim === 1 && lastSim === 1;
+            return { ...c, score, isExact };
+        });
+
+        // Filter: show customers with ≥40% similarity
+        return scored
+            .filter(c => c.score >= 0.4)
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 8);
     };
 
     const handleSave = async () => {
@@ -134,31 +196,48 @@ export default function DigitizePage() {
             return;
         }
 
-        setIsSaving(true);
+        // Search for similar customers first
+        setIsSearchingDuplicates(true);
         try {
-            const customerData = {
-                first_name: formData.first_name,
-                last_name: formData.last_name,
-                email: `${formData.first_name.toLowerCase()}.${formData.last_name.toLowerCase()}@placeholder.com`,
-                phone: formData.phone || undefined,
-                address: "Digitalisiert"
-            };
-
-            let customerId;
-            const searchResults = await api.getCustomers(`${formData.first_name} ${formData.last_name}`);
-
-            const exactMatch = searchResults.find(c =>
-                c.first_name.toLowerCase() === formData.first_name.toLowerCase() &&
-                c.last_name.toLowerCase() === formData.last_name.toLowerCase()
-            );
-
-            if (exactMatch) {
-                customerId = exactMatch.id;
-                toast.info(`Kunde gefunden: ${exactMatch.first_name} ${exactMatch.last_name}`);
+            const similar = await findSimilarCustomers();
+            if (similar.length > 0) {
+                setSimilarCustomers(similar);
+                setShowDuplicateDialog(true);
             } else {
+                // No similar customers found — create new directly
+                await saveWithCustomer(null);
+            }
+        } catch (error) {
+            console.error("Duplicate search failed:", error);
+            // Fall through to create new if search fails
+            await saveWithCustomer(null);
+        } finally {
+            setIsSearchingDuplicates(false);
+        }
+    };
+
+    const saveWithCustomer = async (existingCustomerId) => {
+        setIsSaving(true);
+        setShowDuplicateDialog(false);
+        try {
+            let customerId = existingCustomerId;
+
+            if (!customerId) {
+                // Create new customer
+                const customerData = {
+                    first_name: formData.first_name,
+                    last_name: formData.last_name,
+                    phone: formData.phone || undefined,
+                    address: "Digitalisiert"
+                };
                 const newCustomer = await api.createCustomer(customerData);
                 customerId = newCustomer.id;
                 toast.success("Neuer Kunde erstellt.");
+            } else {
+                const selected = similarCustomers.find(c => c.id === customerId);
+                if (selected) {
+                    toast.info(`Gutschrift wird ${selected.first_name} ${selected.last_name} hinzugefügt.`);
+                }
             }
 
             const transactionData = {
@@ -169,9 +248,9 @@ export default function DigitizePage() {
             };
 
             await api.createTransaction(customerId, transactionData);
-
             toast.success("Gutschrift erfolgreich gespeichert!");
 
+            // Reset form
             setImage(null);
             setFile(null);
             setExtractedData(null);
@@ -183,6 +262,7 @@ export default function DigitizePage() {
                 phone: '',
                 notes: ''
             });
+            setSimilarCustomers([]);
 
         } catch (error) {
             console.error("Save failed:", error);
@@ -190,6 +270,13 @@ export default function DigitizePage() {
         } finally {
             setIsSaving(false);
         }
+    };
+
+    const getMatchLabel = (score, isExact) => {
+        if (isExact) return { text: 'Exakter Treffer', color: 'bg-green-100 text-green-800' };
+        if (score >= 0.8) return { text: 'Sehr ähnlich', color: 'bg-amber-100 text-amber-800' };
+        if (score >= 0.6) return { text: 'Ähnlich', color: 'bg-orange-100 text-orange-800' };
+        return { text: 'Möglicherweise', color: 'bg-gray-100 text-gray-700' };
     };
 
     return (
@@ -431,9 +518,14 @@ export default function DigitizePage() {
                                     className="flex-1 bg-green-600 hover:bg-green-700"
                                     size="lg"
                                     onClick={handleSave}
-                                    disabled={isSaving}
+                                    disabled={isSaving || isSearchingDuplicates}
                                 >
-                                    {isSaving ? (
+                                    {isSearchingDuplicates ? (
+                                        <>
+                                            <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                                            Prüfe Duplikate...
+                                        </>
+                                    ) : isSaving ? (
                                         <>
                                             <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                                             Speichere...
@@ -450,6 +542,77 @@ export default function DigitizePage() {
                     </Card>
                 </div>
             </div>
+
+            {/* Duplicate Detection Dialog */}
+            <Dialog open={showDuplicateDialog} onOpenChange={setShowDuplicateDialog}>
+                <DialogContent className="sm:max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <AlertTriangle className="w-5 h-5 text-amber-500" />
+                            Ähnliche Kunden gefunden
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="py-2">
+                        <p className="text-sm text-muted-foreground mb-4">
+                            Für <strong>{formData.first_name} {formData.last_name}</strong> wurden ähnliche Einträge gefunden.
+                            Möchtest du die Gutschrift einem bestehenden Kunden hinzufügen?
+                        </p>
+
+                        <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+                            {similarCustomers.map((customer) => {
+                                const label = getMatchLabel(customer.score, customer.isExact);
+                                return (
+                                    <button
+                                        key={customer.id}
+                                        className="w-full text-left p-3 rounded-lg border hover:border-primary hover:bg-primary/5 transition-all flex items-center justify-between group"
+                                        onClick={() => saveWithCustomer(customer.id)}
+                                        disabled={isSaving}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                                                <Users className="w-5 h-5 text-primary" />
+                                            </div>
+                                            <div>
+                                                <p className="font-semibold">
+                                                    {customer.first_name} {customer.last_name}
+                                                </p>
+                                                <p className="text-xs text-muted-foreground">
+                                                    Guthaben: {customer.current_balance?.toFixed(2) || '0.00'} CHF
+                                                    {customer.email && customer.email !== 'placeholder' && ` • ${customer.email}`}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <span className={`text-xs px-2 py-1 rounded-full font-medium shrink-0 ${label.color}`}>
+                                            {label.text}
+                                        </span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+                    <DialogFooter className="flex-col sm:flex-row gap-2">
+                        <Button
+                            variant="outline"
+                            onClick={() => setShowDuplicateDialog(false)}
+                            className="sm:order-1"
+                        >
+                            Abbrechen
+                        </Button>
+                        <Button
+                            onClick={() => saveWithCustomer(null)}
+                            disabled={isSaving}
+                            className="bg-green-600 hover:bg-green-700 sm:order-2"
+                        >
+                            {isSaving ? (
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            ) : (
+                                <UserPlus className="w-4 h-4 mr-2" />
+                            )}
+                            Trotzdem neuen Kunden erstellen
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
