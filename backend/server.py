@@ -40,6 +40,20 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# ============== Middleware (CORS) ==============
+# Must be added BEFORE routes/routers are included
+
+# Security: Restrict CORS to known origins only
+# Use regex to allow all Vercel preview deployments (ending in .vercel.app)
+# and local development ports.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origin_regex=r"https://.*\.vercel\.app|http://localhost:\d+",
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # ============== Constants ==============
 CATEGORIES = [
     "Kleider", "Strickmode/Cardigans", "Sweatshirt", "Hoodie",
@@ -1066,20 +1080,7 @@ async def export_customers_excel(current_user: dict = Depends(get_current_user))
 
 app.include_router(api_router)
 
-# Security: Restrict CORS to known origins only
-allowed_origins = [
-    "https://smilla-ankauf.vercel.app",
-    "http://localhost:3000",
-    "http://localhost:3001",
-]
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=allowed_origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
