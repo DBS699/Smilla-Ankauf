@@ -409,7 +409,7 @@ export default function MainPage() {
   };
 
   // Cart sidebar content
-  const CartContent = () => (
+  const renderCartContent = () => (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-semibold flex items-center gap-2">
@@ -707,7 +707,7 @@ export default function MainPage() {
                 <SheetHeader>
                   <SheetTitle className="sr-only">Warenkorb</SheetTitle>
                 </SheetHeader>
-                <CartContent />
+                {renderCartContent()}
               </SheetContent>
             </Sheet>
           </div>
@@ -747,7 +747,7 @@ export default function MainPage() {
 
           <aside className="hidden lg:block w-80 xl:w-96">
             <div className="sticky top-24 bg-white rounded-xl p-6 sidebar-shadow min-h-[500px]">
-              <CartContent />
+              {renderCartContent()}
             </div>
           </aside>
         </div>
