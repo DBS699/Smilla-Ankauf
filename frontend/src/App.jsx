@@ -19,7 +19,11 @@ export const useBackground = () => useContext(BackgroundContext);
 function BackgroundProvider({ children }) {
   const [darkMode, setDarkMode] = useState(false);
 
+  const { user } = useAuth();
+
   useEffect(() => {
+    if (!user) return;
+
     const loadSettings = async () => {
       try {
         const settings = await api.getSettings();
@@ -31,7 +35,7 @@ function BackgroundProvider({ children }) {
       }
     };
     loadSettings();
-  }, []);
+  }, [user]);
 
   return (
     <BackgroundContext.Provider value={{ darkMode, setDarkMode }}>
