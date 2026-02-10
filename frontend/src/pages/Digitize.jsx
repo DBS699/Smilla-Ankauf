@@ -229,7 +229,7 @@ export default function DigitizePage() {
                                         )}
                                     </Button>
                                     <p className="text-xs text-center text-muted-foreground mt-2">
-                                        Powered by Google Gemini 2.0 Flash
+                                        Powered by Google Gemini 3 Flash
                                     </p>
                                 </div>
                             )}

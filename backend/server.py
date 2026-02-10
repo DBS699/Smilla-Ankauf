@@ -1171,7 +1171,7 @@ async def export_customers_excel(current_user: dict = Depends(require_admin)): #
 @api_router.post("/digitize/analyze")
 async def analyze_image(file: UploadFile = File(...), current_user: dict = Depends(require_admin)):
     """
-    Analyze an uploaded image using Gemini 2.0 Flash to extract customer data.
+    Analyze an uploaded image using Gemini 3 Flash (Preview) to extract customer data.
     Returns: JSON with extracted fields.
     """
     api_key = os.environ.get("GEMINI_API_KEY")
@@ -1182,12 +1182,13 @@ async def analyze_image(file: UploadFile = File(...), current_user: dict = Depen
     try:
         genai.configure(api_key=api_key)
         
-        # Priority: Try Gemini 2.0 Flash, fall back to 1.5 Pro if not available
-        model_name = "gemini-2.0-flash"
+        # Priority: Try Gemini 3 Flash (Preview), fall back to 2.0 Flash
+        model_name = "gemini-3-flash-preview"
         try:
              model = genai.GenerativeModel(model_name)
         except Exception:
-             model_name = "gemini-1.5-pro"
+             logger.warning(f"Model {model_name} not found, falling back to gemini-2.0-flash")
+             model_name = "gemini-2.0-flash"
              model = genai.GenerativeModel(model_name)
         
         logger.info(f"Analyzing image with model: {model_name}")
