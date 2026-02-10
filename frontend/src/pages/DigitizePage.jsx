@@ -137,6 +137,32 @@ export default function DigitizePage() {
         }
     };
 
+    const [isDragging, setIsDragging] = useState(false);
+
+    const handleDragOver = (e) => {
+        e.preventDefault();
+        setIsDragging(true);
+    };
+
+    const handleDragLeave = (e) => {
+        e.preventDefault();
+        setIsDragging(false);
+    };
+
+    const handleDrop = (e) => {
+        e.preventDefault();
+        setIsDragging(false);
+
+        const droppedFile = e.dataTransfer.files[0];
+        if (droppedFile && droppedFile.type.startsWith('image/')) {
+            setFile(droppedFile);
+            setImage(URL.createObjectURL(droppedFile));
+            setExtractedData(null);
+        } else if (droppedFile) {
+            toast.error("Bitte nur Bilddateien hochladen");
+        }
+    };
+
     return (
         <div className="container mx-auto px-4 py-8 max-w-4xl">
             <div className="flex items-center justify-between mb-8">
@@ -160,8 +186,15 @@ export default function DigitizePage() {
                     <Card>
                         <CardContent className="pt-6">
                             <div
-                                className={`border-2 border-dashed rounded-xl flex flex-col items-center justify-center p-8 transition-colors ${image ? 'border-primary/20 bg-primary/5' : 'border-muted-foreground/20 hover:border-primary/50 hover:bg-muted/50'
+                                className={`border-2 border-dashed rounded-xl flex flex-col items-center justify-center p-8 transition-colors transition-all duration-200 ${isDragging
+                                        ? 'border-primary bg-primary/10 scale-[1.02]'
+                                        : image
+                                            ? 'border-primary/20 bg-primary/5'
+                                            : 'border-muted-foreground/20 hover:border-primary/50 hover:bg-muted/50'
                                     }`}
+                                onDragOver={handleDragOver}
+                                onDragLeave={handleDragLeave}
+                                onDrop={handleDrop}
                                 onClick={() => !image && fileInputRef.current?.click()}
                             >
                                 {image ? (
@@ -186,7 +219,7 @@ export default function DigitizePage() {
                                         </Button>
                                     </div>
                                 ) : (
-                                    <div className="text-center cursor-pointer">
+                                    <div className="text-center cursor-pointer pointer-events-none">
                                         <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4 text-primary">
                                             <Upload className="w-8 h-8" />
                                         </div>
@@ -194,149 +227,118 @@ export default function DigitizePage() {
                                         <p className="text-sm text-muted-foreground mb-4">
                                             Klicken oder Datei hierher ziehen
                                         </p>
-                                        <Button variant="secondary" size="sm">
-                                            <ImageIcon className="w-4 h-4 mr-2" />
-                                            Datei auswählen
-                                        </Button>
-                                    </div>
+                                    </>
                                 )}
-                                <input
-                                    type="file"
-                                    ref={fileInputRef}
-                                    className="hidden"
-                                    accept="image/*"
-                                    onChange={handleFileSelect}
-                                />
-                            </div>
-
-                            {image && !extractedData && (
-                                <div className="mt-4">
-                                    <Button
-                                        className="w-full h-12 text-lg"
-                                        onClick={handleAnalyze}
-                                        disabled={isAnalyzing}
-                                    >
-                                        {isAnalyzing ? (
-                                            <>
-                                                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                                                KI analysiert Bild...
-                                            </>
-                                        ) : (
-                                            <>
-                                                <RotateCcw className="w-5 h-5 mr-2" />
-                                                Jetzt Analysieren
-                                            </>
-                                        )}
-                                    </Button>
-                                    <p className="text-xs text-center text-muted-foreground mt-2">
-                                        Powered by Google Gemini 3 Flash
-                                    </p>
-                                </div>
+                            </Button>
+                            <p className="text-xs text-center text-muted-foreground mt-2">
+                                Powered by Google Gemini 3 Flash
+                            </p>
+                        </div>
                             )}
-                        </CardContent>
-                    </Card>
-                </div>
+                    </CardContent>
+                </Card>
+            </div>
 
-                {/* Right Column: Results & Form */}
-                <div className="space-y-6">
-                    <Card className={!extractedData ? 'opacity-50 pointer-events-none' : ''}>
-                        <CardHeader>
-                            <CardTitle>Erfasste Daten</CardTitle>
-                            <CardDescription>
-                                Bitte überprüfe und korrigiere die Daten vor dem Speichern.
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="first_name">Vorname</Label>
-                                    <Input
-                                        id="first_name"
-                                        value={formData.first_name}
-                                        onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
-                                        placeholder="Maria"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="last_name">Nachname</Label>
-                                    <Input
-                                        id="last_name"
-                                        value={formData.last_name}
-                                        onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
-                                        placeholder="Muster"
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="amount">Guthaben (CHF)</Label>
-                                    <Input
-                                        id="amount"
-                                        type="number"
-                                        step="0.05"
-                                        className="font-mono font-bold text-lg"
-                                        value={formData.amount}
-                                        onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                                        placeholder="0.00"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="date">Datum</Label>
-                                    <Input
-                                        id="date"
-                                        type="date"
-                                        value={formData.date}
-                                        onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                                    />
-                                </div>
-                            </div>
-
+            {/* Right Column: Results & Form */}
+            <div className="space-y-6">
+                <Card className={!extractedData ? 'opacity-50 pointer-events-none' : ''}>
+                    <CardHeader>
+                        <CardTitle>Erfasste Daten</CardTitle>
+                        <CardDescription>
+                            Bitte überprüfe und korrigiere die Daten vor dem Speichern.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label htmlFor="phone">Telefon (optional)</Label>
+                                <Label htmlFor="first_name">Vorname</Label>
                                 <Input
-                                    id="phone"
-                                    value={formData.phone}
-                                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                                    placeholder="+41 79 123 45 67"
+                                    id="first_name"
+                                    value={formData.first_name}
+                                    onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
+                                    placeholder="Maria"
                                 />
                             </div>
-
                             <div className="space-y-2">
-                                <Label htmlFor="notes">Notizen / Kontext</Label>
-                                <Textarea
-                                    id="notes"
-                                    value={formData.notes}
-                                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                                    placeholder="Zusätzliche Infos vom Beleg..."
-                                    className="min-h-[80px]"
+                                <Label htmlFor="last_name">Nachname</Label>
+                                <Input
+                                    id="last_name"
+                                    value={formData.last_name}
+                                    onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
+                                    placeholder="Muster"
                                 />
                             </div>
+                        </div>
 
-                            <div className="pt-4 flex gap-3">
-                                <Button
-                                    className="flex-1 bg-green-600 hover:bg-green-700"
-                                    size="lg"
-                                    onClick={handleSave}
-                                    disabled={isSaving}
-                                >
-                                    {isSaving ? (
-                                        <>
-                                            <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                                            Speichere...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Save className="w-5 h-5 mr-2" />
-                                            Kunde & Guthaben Speichern
-                                        </>
-                                    )}
-                                </Button>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="amount">Guthaben (CHF)</Label>
+                                <Input
+                                    id="amount"
+                                    type="number"
+                                    step="0.05"
+                                    className="font-mono font-bold text-lg"
+                                    value={formData.amount}
+                                    onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                                    placeholder="0.00"
+                                />
                             </div>
-                        </CardContent>
-                    </Card>
-                </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="date">Datum</Label>
+                                <Input
+                                    id="date"
+                                    type="date"
+                                    value={formData.date}
+                                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="phone">Telefon (optional)</Label>
+                            <Input
+                                id="phone"
+                                value={formData.phone}
+                                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                                placeholder="+41 79 123 45 67"
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="notes">Notizen / Kontext</Label>
+                            <Textarea
+                                id="notes"
+                                value={formData.notes}
+                                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                                placeholder="Zusätzliche Infos vom Beleg..."
+                                className="min-h-[80px]"
+                            />
+                        </div>
+
+                        <div className="pt-4 flex gap-3">
+                            <Button
+                                className="flex-1 bg-green-600 hover:bg-green-700"
+                                size="lg"
+                                onClick={handleSave}
+                                disabled={isSaving}
+                            >
+                                {isSaving ? (
+                                    <>
+                                        <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                                        Speichere...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Save className="w-5 h-5 mr-2" />
+                                        Kunde & Guthaben Speichern
+                                    </>
+                                )}
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
             </div>
         </div>
+        </div >
     );
 }
