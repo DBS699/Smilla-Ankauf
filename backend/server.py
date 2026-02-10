@@ -11,7 +11,7 @@ import re
 import logging
 import time
 from pathlib import Path
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field
 from typing import List, Optional
 import uuid
 from datetime import datetime, timezone, timedelta
@@ -171,7 +171,8 @@ class CategoryImageUpdate(BaseModel):
     image: Optional[str] = None
 
 class SettingsUpdate(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    class Config:
+        extra = "forbid"
     danger_zone_password: Optional[str] = None
     colors: Optional[dict] = None
     hidden_categories: Optional[List[str]] = None
@@ -179,7 +180,8 @@ class SettingsUpdate(BaseModel):
     background: Optional[str] = None
 
 class ReceiptSettingsUpdate(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    class Config:
+        extra = "forbid"
     store_name: Optional[str] = None
     store_address: Optional[str] = None
     store_city: Optional[str] = None
