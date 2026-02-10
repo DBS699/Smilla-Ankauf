@@ -1,15 +1,21 @@
-from fastapi import FastAPI, APIRouter, HTTPException, UploadFile, File
+from fastapi import FastAPI, APIRouter, HTTPException, UploadFile, File, Depends, Request
 from fastapi.responses import StreamingResponse
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
+from passlib.context import CryptContext
+from jose import jwt, JWTError
 import os
+import re
 import logging
+import time
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Optional
 import uuid
 from datetime import datetime, timezone, timedelta
+from collections import defaultdict
 import io
 import pandas as pd
 
@@ -154,6 +160,47 @@ class TransactionResponse(BaseModel):
     staff_username: str
     timestamp: str
 
+# ============== Input Validation Models (M3 fix) ==============
+
+class CustomCategoryCreate(BaseModel):
+    name: str
+    image: Optional[str] = None
+    icon: Optional[str] = None
+
+class CategoryImageUpdate(BaseModel):
+    image: Optional[str] = None
+
+class SettingsUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    danger_zone_password: Optional[str] = None
+    colors: Optional[dict] = None
+    hidden_categories: Optional[List[str]] = None
+    category_icons: Optional[dict] = None
+    background: Optional[str] = None
+
+class ReceiptSettingsUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    store_name: Optional[str] = None
+    store_address: Optional[str] = None
+    store_city: Optional[str] = None
+    store_phone: Optional[str] = None
+    footer_text: Optional[str] = None
+    sub_footer_text: Optional[str] = None
+    show_store_name: Optional[bool] = None
+    show_address: Optional[bool] = None
+    show_phone: Optional[bool] = None
+    show_date: Optional[bool] = None
+    show_receipt_id: Optional[bool] = None
+    show_item_details: Optional[bool] = None
+    show_relevance: Optional[bool] = None
+    show_item_count: Optional[bool] = None
+    show_footer: Optional[bool] = None
+    font_size_store: Optional[int] = None
+    font_size_title: Optional[int] = None
+    font_size_items: Optional[int] = None
+    font_size_total: Optional[int] = None
+    font_size_footer: Optional[int] = None
+
 
 # ============== Basic Routes ==============
 
@@ -162,8 +209,8 @@ async def root():
     try:
         await client.admin.command('ping')
         return {"message": "ReWear POS API", "database_status": "connected"}
-    except Exception as e:
-        return {"message": "ReWear POS API", "database_status": "disconnected", "error": str(e)}
+    except Exception:
+        return {"message": "ReWear POS API", "database_status": "disconnected"}
 
 @api_router.get("/categories")
 async def get_categories():
@@ -181,7 +228,8 @@ async def lookup_fixed_price(
     category: str,
     price_level: str,
     condition: str,
-    relevance: str
+    relevance: str,
+    current_user: dict = Depends(get_current_user)
 ):
     entry = await db.price_matrix.find_one(
         {
@@ -197,7 +245,7 @@ async def lookup_fixed_price(
     return {"fixed_price": None, "found": False}
 
 @api_router.get("/price-matrix/download")
-async def download_price_matrix():
+async def download_price_matrix(current_user: dict = Depends(get_current_user)):
     existing = await db.price_matrix.find({}, {"_id": 0}).to_list(10000)
     existing_map = {}
     for e in existing:
@@ -238,12 +286,12 @@ async def download_price_matrix():
     )
 
 @api_router.get("/price-matrix")
-async def get_price_matrix():
+async def get_price_matrix(current_user: dict = Depends(get_current_user)):
     entries = await db.price_matrix.find({}, {"_id": 0}).to_list(10000)
     return entries
 
 @api_router.post("/price-matrix/upload")
-async def upload_price_matrix(file: UploadFile = File(...)):
+async def upload_price_matrix(file: UploadFile = File(...), current_user: dict = Depends(get_current_user)):
     try:
         contents = await file.read()
         df = pd.read_excel(io.BytesIO(contents))
@@ -302,14 +350,14 @@ async def upload_price_matrix(file: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail=str(e))
 
 @api_router.delete("/price-matrix")
-async def clear_price_matrix():
+async def clear_price_matrix(current_user: dict = Depends(get_current_user)):
     result = await db.price_matrix.delete_many({})
     return {"message": f"{result.deleted_count} Einträge gelöscht"}
 
 # ============== Purchase Routes ==============
 
 @api_router.post("/purchases", response_model=PurchaseResponse)
-async def create_purchase(purchase_data: PurchaseCreate):
+async def create_purchase(purchase_data: PurchaseCreate, current_user: dict = Depends(get_current_user)):
     total = sum(item.price for item in purchase_data.items)
     
     items = [
@@ -380,9 +428,10 @@ async def create_purchase(purchase_data: PurchaseCreate):
 @api_router.get("/purchases", response_model=List[PurchaseResponse])
 async def get_purchases(
     start_date: Optional[str] = None,
-    end_date: Optional[str] = None
+    end_date: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
 ):
-    query = {}
+    query = {"deleted": {"$ne": True}}
     
     if start_date or end_date:
         query["timestamp"] = {}
@@ -395,28 +444,36 @@ async def get_purchases(
     return purchases
 
 @api_router.get("/purchases/{purchase_id}", response_model=PurchaseResponse)
-async def get_purchase(purchase_id: str):
-    purchase = await db.purchases.find_one({"id": purchase_id}, {"_id": 0})
+async def get_purchase(purchase_id: str, current_user: dict = Depends(get_current_user)):
+    purchase = await db.purchases.find_one({"id": purchase_id, "deleted": {"$ne": True}}, {"_id": 0})
     if not purchase:
         raise HTTPException(status_code=404, detail="Purchase not found")
     return purchase
 
 @api_router.delete("/purchases/{purchase_id}")
-async def delete_purchase(purchase_id: str):
-    result = await db.purchases.delete_one({"id": purchase_id})
-    if result.deleted_count == 0:
+async def delete_purchase(purchase_id: str, current_user: dict = Depends(get_current_user)):
+    # GeBüV compliance: soft-delete to preserve audit trail
+    result = await db.purchases.update_one(
+        {"id": purchase_id, "deleted": {"$ne": True}},
+        {"$set": {"deleted": True, "deleted_at": datetime.now(timezone.utc).isoformat(), "deleted_by": current_user["username"]}}
+    )
+    if result.modified_count == 0:
         raise HTTPException(status_code=404, detail="Purchase not found")
     return {"message": "Purchase deleted"}
 
 @api_router.delete("/purchases")
-async def delete_all_purchases():
-    result = await db.purchases.delete_many({})
-    return {"message": f"{result.deleted_count} Ankäufe gelöscht"}
+async def delete_all_purchases(current_user: dict = Depends(get_current_user)):
+    # GeBüV compliance: soft-delete to preserve audit trail
+    result = await db.purchases.update_many(
+        {"deleted": {"$ne": True}},
+        {"$set": {"deleted": True, "deleted_at": datetime.now(timezone.utc).isoformat(), "deleted_by": current_user["username"]}}
+    )
+    return {"message": f"{result.modified_count} Ankäufe gelöscht"}
 
 # Export all purchases as Excel
 @api_router.get("/purchases/export/excel")
-async def export_purchases_excel(start_date: Optional[str] = None, end_date: Optional[str] = None):
-    query = {}
+async def export_purchases_excel(start_date: Optional[str] = None, end_date: Optional[str] = None, current_user: dict = Depends(get_current_user)):
+    query = {"deleted": {"$ne": True}}
     
     if start_date or end_date:
         query["timestamp"] = {}
@@ -482,11 +539,11 @@ async def export_purchases_excel(start_date: Optional[str] = None, end_date: Opt
 # ============== Stats Routes ==============
 
 @api_router.get("/stats/daily", response_model=List[DailyStats])
-async def get_daily_stats(days: int = 30):
+async def get_daily_stats(days: int = 30, current_user: dict = Depends(get_current_user)):
     start_date = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
     
     purchases = await db.purchases.find(
-        {"timestamp": {"$gte": start_date}},
+        {"timestamp": {"$gte": start_date}, "deleted": {"$ne": True}},
         {"_id": 0}
     ).to_list(10000)
     
@@ -506,10 +563,10 @@ async def get_daily_stats(days: int = 30):
     return result
 
 @api_router.get("/stats/monthly", response_model=List[MonthlyStats])
-async def get_monthly_stats(months: int = 12):
+async def get_monthly_stats(months: int = 12, current_user: dict = Depends(get_current_user)):
     # Optimized: Only fetch required fields and limit results
     purchases = await db.purchases.find(
-        {}, 
+        {"deleted": {"$ne": True}}, 
         {"_id": 0, "timestamp": 1, "total": 1}
     ).to_list(50000)
     
@@ -529,12 +586,12 @@ async def get_monthly_stats(months: int = 12):
     return result
 
 @api_router.get("/stats/today")
-async def get_today_stats():
+async def get_today_stats(current_user: dict = Depends(get_current_user)):
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     
     # Optimized: Use date range query instead of regex, only fetch needed fields
     purchases = await db.purchases.find(
-        {"timestamp": {"$gte": today, "$lt": today + "T23:59:59"}},
+        {"timestamp": {"$gte": today, "$lt": today + "T23:59:59"}, "deleted": {"$ne": True}},
         {"_id": 0, "total": 1, "items": 1}
     ).to_list(1000)
     
@@ -549,13 +606,77 @@ async def get_today_stats():
         "total_items": total_items
     }
 
-# ============== Auth Routes ==============
+# ============== Auth & Security ==============
 
-# Load user credentials from environment variables (with fallback for development)
+# JWT Configuration
+JWT_SECRET = os.environ.get("JWT_SECRET", "dev-secret-change-in-production-" + str(uuid.uuid4()))
+JWT_ALGORITHM = "HS256"
+JWT_EXPIRATION_HOURS = 12
+
+# Password hashing
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+# Bearer token security scheme
+security = HTTPBearer(auto_error=False)
+
+# Rate limiting for login
+login_attempts = defaultdict(list)  # IP -> list of timestamps
+MAX_LOGIN_ATTEMPTS = 5
+LOGIN_WINDOW_SECONDS = 60
+
+# Hash passwords at startup (only once)
+def _hash_pw(plain: str) -> str:
+    return pwd_context.hash(plain)
+
 USERS = {
-    "admin": {"password": os.environ.get("ADMIN_PASSWORD", "1234"), "role": "admin"},
-    "smilla": {"password": os.environ.get("SMILLA_PASSWORD", "1234"), "role": "mitarbeiter"}
+    "admin": {
+        "password_hash": _hash_pw(os.environ.get("ADMIN_PASSWORD", "1234")),
+        "role": "admin"
+    },
+    "smilla": {
+        "password_hash": _hash_pw(os.environ.get("SMILLA_PASSWORD", "1234")),
+        "role": "mitarbeiter"
+    }
 }
+
+def create_access_token(username: str, role: str) -> str:
+    payload = {
+        "sub": username,
+        "role": role,
+        "exp": datetime.now(timezone.utc) + timedelta(hours=JWT_EXPIRATION_HOURS),
+        "iat": datetime.now(timezone.utc),
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+async def get_current_user(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+) -> dict:
+    """Validate JWT token and return current user. Raises 401 if invalid."""
+    if credentials is None:
+        raise HTTPException(status_code=401, detail="Token erforderlich")
+    try:
+        payload = jwt.decode(credentials.credentials, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        username = payload.get("sub")
+        role = payload.get("role")
+        if username is None:
+            raise HTTPException(status_code=401, detail="Ungültiger Token")
+        return {"username": username, "role": role}
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Token abgelaufen oder ungültig")
+
+def check_rate_limit(client_ip: str):
+    """Enforce rate limiting on login attempts."""
+    now = time.time()
+    # Clean old entries
+    login_attempts[client_ip] = [
+        t for t in login_attempts[client_ip] if now - t < LOGIN_WINDOW_SECONDS
+    ]
+    if len(login_attempts[client_ip]) >= MAX_LOGIN_ATTEMPTS:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Zu viele Anmeldeversuche. Bitte warten Sie {LOGIN_WINDOW_SECONDS} Sekunden."
+        )
+    login_attempts[client_ip].append(now)
 
 class LoginRequest(BaseModel):
     username: str
@@ -566,28 +687,39 @@ class UserResponse(BaseModel):
     role: str
 
 @api_router.post("/auth/login")
-async def login(data: LoginRequest):
+async def login(data: LoginRequest, request: Request):
+    # Rate limiting
+    client_ip = request.client.host if request.client else "unknown"
+    check_rate_limit(client_ip)
+    
     user = USERS.get(data.username.lower())
-    if not user or user["password"] != data.password:
+    if not user or not pwd_context.verify(data.password, user["password_hash"]):
         raise HTTPException(status_code=401, detail="Falscher Benutzername oder Passwort")
-    return {"username": data.username.lower(), "role": user["role"]}
+    
+    # Generate JWT token
+    token = create_access_token(data.username.lower(), user["role"])
+    
+    return {
+        "username": data.username.lower(),
+        "role": user["role"],
+        "access_token": token,
+        "token_type": "bearer"
+    }
 
 @api_router.get("/auth/users")
-async def get_users():
+async def get_users(current_user: dict = Depends(get_current_user)):
     return [{"username": k, "role": v["role"]} for k, v in USERS.items()]
 
 # ============== Custom Categories Routes ==============
 
 @api_router.get("/custom-categories")
-async def get_custom_categories():
+async def get_custom_categories(current_user: dict = Depends(get_current_user)):
     categories = await db.custom_categories.find({}, {"_id": 0}).to_list(100)
     return categories  # Return full objects with name and image
 
 @api_router.post("/custom-categories")
-async def add_custom_category(data: dict):
-    name = data.get("name", "").strip()
-    image = data.get("image", None)  # Base64 image data
-    icon = data.get("icon", None)    # Icon name string
+async def add_custom_category(data: CustomCategoryCreate, current_user: dict = Depends(get_current_user)):
+    name = data.name.strip()
     
     if not name:
         raise HTTPException(status_code=400, detail="Name erforderlich")
@@ -598,22 +730,21 @@ async def add_custom_category(data: dict):
     if existing:
         raise HTTPException(status_code=400, detail="Kategorie existiert bereits")
     
-    await db.custom_categories.insert_one({"name": name, "image": image, "icon": icon})
+    await db.custom_categories.insert_one({"name": name, "image": data.image, "icon": data.icon})
     return {"message": f"Kategorie '{name}' hinzugefügt"}
 
 @api_router.put("/custom-categories/{name}/image")
-async def update_category_image(name: str, data: dict):
-    image = data.get("image", None)
+async def update_category_image(name: str, data: CategoryImageUpdate, current_user: dict = Depends(get_current_user)):
     result = await db.custom_categories.update_one(
         {"name": name},
-        {"$set": {"image": image}}
+        {"$set": {"image": data.image}}
     )
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Kategorie nicht gefunden")
     return {"message": "Bild aktualisiert"}
 
 @api_router.delete("/custom-categories/{name}")
-async def delete_custom_category(name: str):
+async def delete_custom_category(name: str, current_user: dict = Depends(get_current_user)):
     result = await db.custom_categories.delete_one({"name": name})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Kategorie nicht gefunden")
@@ -622,7 +753,7 @@ async def delete_custom_category(name: str):
 # ============== Settings Routes ==============
 
 @api_router.get("/settings")
-async def get_settings():
+async def get_settings(current_user: dict = Depends(get_current_user)):
     settings = await db.app_settings.find_one({"type": "general"}, {"_id": 0})
     if not settings:
         return {
@@ -640,17 +771,19 @@ async def get_settings():
     return settings
 
 @api_router.put("/settings")
-async def update_settings(data: dict):
+async def update_settings(data: SettingsUpdate, current_user: dict = Depends(get_current_user)):
+    update_data = data.model_dump(exclude_none=True)
+    update_data["type"] = "general"
     await db.app_settings.update_one(
         {"type": "general"},
-        {"$set": {**data, "type": "general"}},
+        {"$set": update_data},
         upsert=True
     )
     return {"message": "Einstellungen gespeichert"}
 
 # Receipt settings
 @api_router.get("/settings/receipt")
-async def get_receipt_settings():
+async def get_receipt_settings(current_user: dict = Depends(get_current_user)):
     settings = await db.app_settings.find_one({"type": "receipt"}, {"_id": 0})
     if not settings:
         return {
@@ -678,10 +811,12 @@ async def get_receipt_settings():
     return settings
 
 @api_router.put("/settings/receipt")
-async def update_receipt_settings(data: dict):
+async def update_receipt_settings(data: ReceiptSettingsUpdate, current_user: dict = Depends(get_current_user)):
+    update_data = data.model_dump(exclude_none=True)
+    update_data["type"] = "receipt"
     await db.app_settings.update_one(
         {"type": "receipt"},
-        {"$set": {**data, "type": "receipt"}},
+        {"$set": update_data},
         upsert=True
     )
     return {"message": "Quittungs-Einstellungen gespeichert"}
@@ -689,11 +824,12 @@ async def update_receipt_settings(data: dict):
 # ============== Customer Routes ==============
 
 @api_router.get("/customers", response_model=List[CustomerResponse])
-async def get_customers(search: Optional[str] = None):
+async def get_customers(search: Optional[str] = None, current_user: dict = Depends(get_current_user)):
     """Get all customers, optionally filtered by search term (name or email)."""
     query = {}
     if search:
-        search_regex = {"$regex": search, "$options": "i"}
+        escaped_search = re.escape(search)
+        search_regex = {"$regex": escaped_search, "$options": "i"}
         query = {"$or": [
             {"first_name": search_regex},
             {"last_name": search_regex},
@@ -712,7 +848,7 @@ async def get_customers(search: Optional[str] = None):
     return customers
 
 @api_router.post("/customers", response_model=CustomerResponse)
-async def create_customer(data: CustomerCreate):
+async def create_customer(data: CustomerCreate, current_user: dict = Depends(get_current_user)):
     """Create a new customer."""
     # Check if email already exists
     existing = await db.customers.find_one({"email": data.email.lower().strip()})
@@ -743,7 +879,7 @@ async def create_customer(data: CustomerCreate):
     )
 
 @api_router.get("/customers/{customer_id}")
-async def get_customer(customer_id: str):
+async def get_customer(customer_id: str, current_user: dict = Depends(get_current_user)):
     """Get a single customer with their transaction history."""
     customer = await db.customers.find_one({"id": customer_id}, {"_id": 0})
     if not customer:
@@ -779,7 +915,7 @@ async def get_customer(customer_id: str):
     }
 
 @api_router.put("/customers/{customer_id}")
-async def update_customer(customer_id: str, data: CustomerCreate):
+async def update_customer(customer_id: str, data: CustomerCreate, current_user: dict = Depends(get_current_user)):
     """Update customer details."""
     existing = await db.customers.find_one({"id": customer_id})
     if not existing:
@@ -805,7 +941,7 @@ async def update_customer(customer_id: str, data: CustomerCreate):
     return {"message": "Kunde aktualisiert"}
 
 @api_router.delete("/customers/{customer_id}")
-async def delete_customer(customer_id: str):
+async def delete_customer(customer_id: str, current_user: dict = Depends(get_current_user)):
     """Delete a customer and their transactions."""
     result = await db.customers.delete_one({"id": customer_id})
     if result.deleted_count == 0:
@@ -817,7 +953,7 @@ async def delete_customer(customer_id: str):
     return {"message": "Kunde gelöscht"}
 
 @api_router.post("/customers/{customer_id}/transactions")
-async def create_transaction(customer_id: str, data: TransactionCreate, staff_username: str = "system"):
+async def create_transaction(customer_id: str, data: TransactionCreate, staff_username: str = "system", current_user: dict = Depends(get_current_user)):
     """Create a manual transaction (credit or debit)."""
     customer = await db.customers.find_one({"id": customer_id})
     if not customer:
@@ -855,7 +991,7 @@ async def create_transaction(customer_id: str, data: TransactionCreate, staff_us
     }
 
 @api_router.get("/customers/export/excel")
-async def export_customers_excel():
+async def export_customers_excel(current_user: dict = Depends(get_current_user)):
     """Export all customers and their transactions as Excel file."""
     customers = await db.customers.find({}, {"_id": 0}).to_list(10000)
     transactions = await db.credit_transactions.find({}, {"_id": 0}).to_list(50000)
@@ -925,10 +1061,17 @@ async def export_customers_excel():
 
 app.include_router(api_router)
 
+# Security: Restrict CORS to known origins only
+allowed_origins = [
+    "https://smilla-ankauf.vercel.app",
+    "http://localhost:3000",
+    "http://localhost:3001",
+]
+
 app.add_middleware(
     CORSMiddleware,
+    allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_origin_regex="https?://.*",
     allow_methods=["*"],
     allow_headers=["*"],
 )

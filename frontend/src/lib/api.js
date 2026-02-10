@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
 // Create axios instance
@@ -10,6 +10,28 @@ const apiClient = axios.create({
     'Content-Type': 'application/json',
   },
 });
+
+// Attach JWT token to every request
+apiClient.interceptors.request.use((config) => {
+  const token = localStorage.getItem('rewear_token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// Handle 401 responses (expired/invalid token) — force re-login
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401 && !error.config.url?.includes('/auth/login')) {
+      localStorage.removeItem('rewear_user');
+      localStorage.removeItem('rewear_token');
+      window.location.reload();
+    }
+    return Promise.reject(error);
+  }
+);
 
 // API functions
 export const api = {
@@ -89,7 +111,7 @@ export const api = {
   },
 
   downloadPriceMatrix: async () => {
-    const response = await axios.get(`${API}/price-matrix/download`, {
+    const response = await apiClient.get('/price-matrix/download', {
       responseType: 'blob'
     });
     // Create download link
@@ -106,7 +128,7 @@ export const api = {
   uploadPriceMatrix: async (file) => {
     const formData = new FormData();
     formData.append('file', file);
-    const response = await axios.post(`${API}/price-matrix/upload`, formData, {
+    const response = await apiClient.post('/price-matrix/upload', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
     return response.data;
@@ -150,7 +172,7 @@ export const api = {
     if (startDate) params.start_date = startDate;
     if (endDate) params.end_date = endDate;
 
-    const response = await axios.get(`${API}/purchases/export/excel`, {
+    const response = await apiClient.get('/purchases/export/excel', {
       responseType: 'blob',
       params
     });
@@ -238,7 +260,7 @@ export const api = {
 
   // Export customers to Excel
   exportCustomersExcel: async () => {
-    const response = await axios.get(`${API}/customers/export/excel`, {
+    const response = await apiClient.get('/customers/export/excel', {
       responseType: 'blob'
     });
     const url = window.URL.createObjectURL(new Blob([response.data]));
