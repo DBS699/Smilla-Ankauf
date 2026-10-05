@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
+// Empty = same origin (backend runs as Vercel function under /api)
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || '';
 const API = `${BACKEND_URL}/api`;
 
 // Create axios instance
@@ -286,7 +287,7 @@ export const api = {
 
   analyzeImage: async (file) => {
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('file', await shrinkImage(file));
 
     // Increase timeout for AI processing
     const response = await apiClient.post('/digitize/analyze', formData, {
@@ -296,5 +297,26 @@ export const api = {
     return response.data;
   }
 };
+
+// Vercel functions accept max 4.5 MB per request — downscale large photos before upload
+const MAX_UPLOAD_BYTES = 3 * 1024 * 1024;
+const MAX_IMAGE_EDGE = 2000;
+
+async function shrinkImage(file) {
+  if (!file.type?.startsWith('image/') || file.size <= MAX_UPLOAD_BYTES) return file;
+  try {
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, MAX_IMAGE_EDGE / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(bitmap.width * scale);
+    canvas.height = Math.round(bitmap.height * scale);
+    canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.85));
+    if (!blob) return file;
+    return new File([blob], file.name.replace(/\.\w+$/, '') + '.jpg', { type: 'image/jpeg' });
+  } catch {
+    return file;
+  }
+}
 
 export default api;
